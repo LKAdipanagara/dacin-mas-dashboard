@@ -1,0 +1,16 @@
+{
+  "name": "Dacin Mas — Panel Kendali Proyek",
+  "short_name": "Dacin Mas",
+  "description": "Pencatatan proyek, bagi hasil investor, dan monitoring threshold pajak PP 20/2026 untuk CV Dacin Mas Calibration Services — sinkron real-time.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#12161A",
+  "theme_color": "#12161A",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
