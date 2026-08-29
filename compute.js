@@ -170,6 +170,29 @@ export function computeAverageComponentCost(computedProjects) {
   };
 }
 
+/**
+ * Forecast kebutuhan modal kerja (personil/dokumen/operasional) untuk sebuah Nilai Kontrak
+ * baru, berdasarkan rata-rata persentase historis (computeAverageComponentCost). Dipakai
+ * di form "Tambah Proyek" supaya begitu Nilai Kontrak diisi, estimasi biaya langsung muncul.
+ */
+export function forecastComponentCost(nilaiKontrak, computedProjects) {
+  const nk = toNumber(nilaiKontrak);
+  const { avgPersonil, avgDokumen, avgOperasional, rows } = computeAverageComponentCost(computedProjects);
+  if (!rows.length || !(nk > 0)) {
+    return { available: false, personil: 0, dokumen: 0, operasional: 0, modalKerja: 0, sampleSize: rows.length };
+  }
+  const personil = nk * (avgPersonil / 100);
+  const dokumen = nk * (avgDokumen / 100);
+  const operasional = nk * (avgOperasional / 100);
+  return {
+    available: true,
+    personil, dokumen, operasional,
+    modalKerja: personil + dokumen + operasional,
+    avgPersonil, avgDokumen, avgOperasional,
+    sampleSize: rows.length,
+  };
+}
+
 /** Status dana investor mengikuti tahap progres proyek. */
 export function computeProgressStatus(p) {
   const progress = p.progress || {};

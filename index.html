@@ -7,8 +7,8 @@
 <meta name="description" content="Pencatatan proyek, bagi hasil investor, dan monitoring threshold pajak PP 20/2026 untuk CV Dacin Mas Calibration Services — sinkron real-time dari HP maupun web.">
 <meta name="theme-color" content="#12161A">
 <link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./icons/icon-192.png">
-<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -247,6 +247,7 @@
           <label>Investor / Sumber Dana<input type="text" id="f_investor" list="investorOptions"><datalist id="investorOptions"></datalist><span class="field-error" id="err_investor"></span></label>
           <label>Nilai Kontrak (Rp)<input type="number" id="f_nilaiKontrak" min="0" step="1" required><span class="field-error" id="err_nilaiKontrak"></span></label>
           <label>Kebutuhan Modal Kerja (Rp)<input type="number" id="f_modalKerja" min="0" step="1" required><span class="field-error" id="err_modalKerja"></span></label>
+          <p class="section-note span-2" id="forecastHint" style="display:none;margin:-8px 0 0"></p>
           <label class="span-2">Jenis Pekerjaan<input type="text" id="f_jenisPekerjaan" list="jobOptions"><datalist id="jobOptions"></datalist></label>
           <label>Fee CB (Rp)<input type="number" id="f_feeCB" min="0" step="1"><span class="field-error" id="err_feeCB"></span></label>
         </div>

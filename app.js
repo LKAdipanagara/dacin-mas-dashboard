@@ -42,6 +42,7 @@ let CHARTS = {};
 let TABLE_SORT = { key: 'tanggalTransfer', dir: 'desc' };
 let EDITING_ID = null; // null = mode tambah baru
 let unsubProjects = null, unsubSettings = null;
+let FORECAST_DIRTY = new Set(); // field biaya yang sudah diubah manual - jangan ditimpa forecast
 
 const KNOWN_INVESTORS = ['Vares', 'Kang Fajar', 'Kas Dacin', 'Gana'];
 const KNOWN_JOBS = ['Kalibrasi Timbangan', 'Kalibrasi Tangki', 'Kalibrasi Flowmeter', 'Kalibrasi Suhu', 'Kalibrasi Pressure', 'Kalibrasi Vacum Gauge', 'Check Weigher', 'Repair Timbangan', 'Pengadaan Barang', 'Training', 'Subkon', 'Kalibrasi Batching Plant', 'Kalibrasi Anak Timbangan'];
@@ -528,8 +529,39 @@ function wireForm() {
   qs('#formOverlay').addEventListener('click', (e) => { if (e.target.id === 'formOverlay') closeForm(); });
 
   const form = qs('#projectForm');
-  form.addEventListener('input', updateLivePreview);
+  const forecastFieldIds = ['f_modalKerja', 'f_biayaPersonil', 'f_biayaDokumen', 'f_biayaOperasional'];
+  form.addEventListener('input', (e) => {
+    if (forecastFieldIds.includes(e.target.id)) FORECAST_DIRTY.add(e.target.id);
+    if (e.target.id === 'f_nilaiKontrak') applyForecast();
+    updateLivePreview();
+  });
   form.addEventListener('submit', handleFormSubmit);
+}
+
+/**
+ * Isi otomatis Kebutuhan Modal Kerja + rincian Personil/Dokumen/Operasional begitu Nilai
+ * Kontrak diisi pada proyek BARU, berdasarkan rata-rata historis (compute.js -
+ * forecastComponentCost). Field yang sudah diubah manual oleh pengguna (FORECAST_DIRTY)
+ * tidak akan ditimpa lagi.
+ */
+function applyForecast() {
+  const hint = qs('#forecastHint');
+  if (EDITING_ID) { hint.style.display = 'none'; return; } // jangan timpa data proyek yang sudah ada
+  const nilaiKontrak = C.toNumber(qs('#f_nilaiKontrak').value);
+  if (!(nilaiKontrak > 0)) { hint.style.display = 'none'; return; }
+
+  const f = C.forecastComponentCost(nilaiKontrak, COMPUTED);
+  if (!f.available) { hint.style.display = 'none'; return; }
+
+  if (!FORECAST_DIRTY.has('f_biayaPersonil')) qs('#f_biayaPersonil').value = Math.round(f.personil);
+  if (!FORECAST_DIRTY.has('f_biayaDokumen')) qs('#f_biayaDokumen').value = Math.round(f.dokumen);
+  if (!FORECAST_DIRTY.has('f_biayaOperasional')) qs('#f_biayaOperasional').value = Math.round(f.operasional);
+  if (!FORECAST_DIRTY.has('f_modalKerja')) qs('#f_modalKerja').value = Math.round(f.modalKerja);
+
+  hint.style.display = 'block';
+  hint.textContent = '🔮 Estimasi otomatis dari rata-rata ' + f.sampleSize + ' proyek historis ' +
+    '(Personil ' + f.avgPersonil.toFixed(1) + '%, Dokumen ' + f.avgDokumen.toFixed(1) + '%, ' +
+    'Operasional ' + f.avgOperasional.toFixed(1) + '% dari Nilai Kontrak) — silakan sesuaikan manual bila perlu.';
 }
 
 function openForm(id) {
@@ -537,6 +569,8 @@ function openForm(id) {
   const form = qs('#projectForm');
   form.reset();
   qsa('.field-error', form).forEach((el) => (el.textContent = ''));
+  FORECAST_DIRTY = new Set();
+  qs('#forecastHint').style.display = 'none';
 
   if (id) {
     const p = RAW_PROJECTS.find((x) => x.id === id);
