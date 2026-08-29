@@ -25,12 +25,7 @@
 <!-- ===== Login screen ===== -->
 <div id="loginScreen" class="full-screen-msg" style="display:none">
   <form id="loginForm" class="login-box">
-    <svg class="brand-mark" viewBox="0 0 36 36" fill="none" style="width:44px;height:44px;margin:0 auto 14px">
-      <rect x="1.5" y="1.5" width="33" height="33" rx="6" fill="#1B2126" stroke="#2C343B"/>
-      <circle cx="18" cy="18" r="11.5" stroke="#C69A52" stroke-width="1.6"/>
-      <line x1="18" y1="18" x2="24.5" y2="12" stroke="#ECE7DD" stroke-width="2" stroke-linecap="round"/>
-      <circle cx="18" cy="18" r="1.8" fill="#C69A52"/>
-    </svg>
+    <img class="brand-mark" src="./brand-icon.png" alt="Dacin Mas" style="width:56px;height:56px;margin:0 auto 14px;display:block">
     <h1>DACIN MAS</h1>
     <p class="section-note" style="text-align:center;margin-bottom:20px">Masuk untuk mencatat &amp; memantau proyek</p>
     <label>Email<input type="email" id="loginEmail" required autocomplete="username"></label>
@@ -48,12 +43,7 @@
 <header class="app-header">
   <div class="header-inner">
     <div class="brand">
-      <svg class="brand-mark" viewBox="0 0 36 36" fill="none">
-        <rect x="1.5" y="1.5" width="33" height="33" rx="6" fill="#1B2126" stroke="#2C343B"/>
-        <circle cx="18" cy="18" r="11.5" stroke="#C69A52" stroke-width="1.6"/>
-        <line x1="18" y1="18" x2="24.5" y2="12" stroke="#ECE7DD" stroke-width="2" stroke-linecap="round"/>
-        <circle cx="18" cy="18" r="1.8" fill="#C69A52"/>
-      </svg>
+      <img class="brand-mark" src="./brand-icon.png" alt="Dacin Mas">
       <div class="brand-text">
         <span class="name">DACIN MAS</span>
         <span class="sub" id="userEmail">PANEL KENDALI PROYEK</span>
@@ -140,6 +130,23 @@
         <canvas id="clientChart"></canvas>
       </div>
     </div>
+
+    <div class="section-head"><div><div class="eyebrow">Tabulasi</div><h2>Rincian Omset per Bulan</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bulan</th><th>Omset</th><th>Modal Kerja</th><th>Laba Kotor</th><th>Margin</th><th>Jml Proyek</th></tr></thead>
+        <tbody id="monthlyBody"></tbody>
+      </table>
+    </div>
+
+    <div class="section-head"><div><div class="eyebrow">Tabulasi</div><h2>Kontribusi &amp; Konsentrasi Klien</h2></div></div>
+    <p class="section-note" id="clientConcentrationNote"></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Klien</th><th>Omset</th><th>Jml Proyek</th><th>Kontribusi</th></tr></thead>
+        <tbody id="clientBody"></tbody>
+      </table>
+    </div>
   </section>
 
   <!-- ===== 03 TARGET ===== -->
@@ -180,6 +187,7 @@
           <th data-sort="modalKerja">Modal Kerja <span class="arrow"></span></th>
           <th data-sort="keuntunganNet">Untung Net <span class="arrow"></span></th>
           <th data-sort="investor">Investor <span class="arrow"></span></th>
+          <th>Penawaran</th>
           <th>Aksi</th>
         </tr></thead>
         <tbody id="projectsBody"></tbody>
@@ -193,9 +201,16 @@
     <div class="investor-grid" id="investorGrid"></div>
 
     <div class="section-head"><div><div class="eyebrow">Pemantauan</div><h2>Progres Dana per Proyek</h2></div></div>
+    <div class="status-legend" id="statusLegend">
+      <span><i class="ok"></i>Baru Masuk Pekerjaan (≤30 hari)</span>
+      <span><i class="warn"></i>Mendekati Deadline Waktu (31-60 hari)</span>
+      <span><i class="danger"></i>Peringatan Mendekati Pembayaran (&gt;60 hari)</span>
+      <span><i class="info"></i>Selesai &amp; Lunas ke Investor</span>
+      <span><i class="neutral"></i>Belum Ada Dana</span>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Perusahaan</th><th>Investor</th><th>Tgl Transfer</th><th>Total Kembali</th><th>Status</th></tr></thead>
+        <thead><tr><th>Perusahaan</th><th>Investor</th><th>Tgl Transfer</th><th>Total Kembali</th><th>Status</th><th>Keterangan</th><th>Kendala</th></tr></thead>
         <tbody id="progressBody"></tbody>
       </table>
     </div>
@@ -259,6 +274,20 @@
             <label>Biaya Personil/Tenaga Ahli<input type="number" id="f_biayaPersonil" min="0" step="1"></label>
             <label>Dokumen/Sertifikat<input type="number" id="f_biayaDokumen" min="0" step="1"></label>
             <label>Operasional<input type="number" id="f_biayaOperasional" min="0" step="1"></label>
+          </div>
+        </details>
+
+        <details class="detail-block" id="penawaranBlock">
+          <summary>Surat Penawaran (opsional)</summary>
+          <p class="section-note" id="penawaranEmptyNote" style="margin-top:10px">Simpan proyek ini dulu (klik Simpan), lalu buka lagi untuk mengunggah file surat penawaran.</p>
+          <div id="penawaranManager" style="display:none;margin-top:10px">
+            <div id="penawaranCurrent" style="display:none;margin-bottom:12px;align-items:center;gap:8px">
+              <a id="penawaranDownloadLink" href="#" target="_blank" rel="noopener" class="btn">⬇ <span id="penawaranFileName">—</span></a>
+              <button type="button" class="btn danger-text" id="penawaranDeleteBtn" style="margin-left:8px">Hapus File</button>
+            </div>
+            <label>Upload File Baru (PDF/Word, maks 15MB)<input type="file" id="penawaranFileInput" accept=".pdf,.doc,.docx"></label>
+            <p class="field-error" id="penawaranError"></p>
+            <p class="section-note" id="penawaranUploading" style="display:none">Mengunggah…</p>
           </div>
         </details>
 

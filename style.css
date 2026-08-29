@@ -11,6 +11,7 @@
   --ok:#4F9D6E;
   --warn:#D9A441;
   --danger:#C25450;
+  --info:#5A96DC;
   --ink:#ECE7DD;
   --ink-dim:#9AA3A8;
   --ink-faint:#6B747A;
@@ -180,6 +181,17 @@ tbody tr:last-child td{border-bottom:none}
 .badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:10.5px; font-family:var(--font-mono)}
 .badge.ok{background:rgba(79,157,110,.15); color:var(--ok)}
 .badge.warn{background:rgba(217,164,65,.15); color:var(--warn)}
+.badge.info{background:rgba(90,150,220,.15); color:var(--info)}
+.badge.neutral{background:rgba(154,163,168,.12); color:var(--ink-faint)}
+
+.status-legend{display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 4px; font-size:11.5px; color:var(--ink-dim)}
+.status-legend span{display:inline-flex; align-items:center; gap:6px}
+.status-legend i{width:9px; height:9px; border-radius:50%; display:inline-block}
+.status-legend .ok{background:var(--ok)}
+.status-legend .warn{background:var(--warn)}
+.status-legend .danger{background:var(--danger)}
+.status-legend .info{background:var(--info)}
+.status-legend .neutral{background:var(--ink-faint)}
 
 .search-bar{display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap}
 .search-bar input, .search-bar select{

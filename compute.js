@@ -193,18 +193,24 @@ export function forecastComponentCost(nilaiKontrak, computedProjects) {
   };
 }
 
-/** Status dana investor mengikuti tahap progres proyek. */
+/**
+ * Status dana investor per proyek, dengan skema warna tetap supaya gampang dikenali sekilas:
+ *   BIRU  = selesai pekerjaan & dana sudah lunas dikembalikan ke investor
+ *   HIJAU = baru masuk pekerjaan (≤30 hari sejak dana masuk)
+ *   KUNING = sudah mendekati deadline waktu (31-60 hari)
+ *   MERAH = peringatan mendekati/lewat waktu pembayaran (>60 hari, belum lunas)
+ *   ABU-ABU = belum ada dana masuk sama sekali (netral, belum berlaku status apapun)
+ */
 export function computeProgressStatus(p) {
   const progress = p.progress || {};
-  if (progress.pembayaran) return { label: '✅ LUNAS - Dana Kembali', level: 'ok' };
-  if (!p.tanggalTransfer) return { label: '⚪ Belum Ada Dana', level: 'neutral' };
+  if (progress.pembayaran) return { label: 'Selesai & Lunas ke Investor', level: 'info', dot: '🔵' };
+  if (!p.tanggalTransfer) return { label: 'Belum Ada Dana', level: 'neutral', dot: '⚪' };
   const d = toDate(p.tanggalTransfer);
-  if (!d) return { label: 'Cek Tanggal', level: 'warn' };
+  if (!d) return { label: 'Cek Tanggal', level: 'warn', dot: '🟡' };
   const days = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (days <= 30) return { label: '🟢 Dana Baru Masuk', level: 'ok' };
-  if (days <= 60) return { label: '🟡 Dalam Pengerjaan', level: 'warn' };
-  if (days <= 90) return { label: '🔴 Perlu Percepatan', level: 'warn' };
-  return { label: '⛔ FOLLOW UP URGENT', level: 'danger' };
+  if (days <= 30) return { label: 'Baru Masuk Pekerjaan', level: 'ok', dot: '🟢' };
+  if (days <= 60) return { label: 'Mendekati Deadline Waktu', level: 'warn', dot: '🟡' };
+  return { label: 'Peringatan Mendekati Pembayaran', level: 'danger', dot: '🔴' };
 }
 
 /* ===================== Validation ===================== */

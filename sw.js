@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dacin-mas-crud-v2';
+const CACHE_NAME = 'dacin-mas-crud-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const APP_SHELL = [
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  './brand-icon.png',
 ];
 
 self.addEventListener('install', (event) => {

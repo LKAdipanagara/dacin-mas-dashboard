@@ -1,0 +1,18 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // File surat penawaran per proyek. Hanya pengguna yang sudah login yang boleh
+    // upload/download/hapus, dan dibatasi maks 15MB per file supaya tidak kebablasan.
+    match /penawaran/{docId}/{fileName} {
+      allow read, write: if request.auth != null
+                          && request.resource.size < 15 * 1024 * 1024;
+      allow delete: if request.auth != null;
+    }
+
+    // Tolak semua akses ke path lain yang tidak didefinisikan di atas.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

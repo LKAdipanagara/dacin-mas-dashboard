@@ -177,6 +177,11 @@ function wireTabs() {
       qsa('.view').forEach((v) => v.classList.remove('active'));
       btn.classList.add('active');
       qs('#' + btn.dataset.target).classList.add('active');
+      // Chart.js mengukur ukuran canvas saat dibuat; kalau tab-nya sedang tersembunyi
+      // (display:none) waktu chart pertama kali dirender, ukurannya jadi 0 dan kosong
+      // selamanya. Resize paksa setelah tab aktif (browser sudah selesai reflow) supaya
+      // chart di tab Omset & Biaya ikut muncul begitu tab-nya dibuka.
+      requestAnimationFrame(() => Object.values(CHARTS).forEach((c) => c && c.resize()));
     });
   });
 }
@@ -187,8 +192,12 @@ function recomputeAndRenderAll() {
   const kpi = C.computeKPI(COMPUTED, SETTINGS);
   renderKPI(kpi);
   renderGauge(kpi);
-  renderMonthlyChart(C.groupByMonth(COMPUTED));
-  renderClientChart(C.groupByClient(COMPUTED));
+  const perMonth = C.groupByMonth(COMPUTED);
+  const perClient = C.groupByClient(COMPUTED);
+  renderMonthlyChart(perMonth);
+  renderClientChart(perClient);
+  renderMonthlyTable(perMonth);
+  renderClientTable(perClient);
   renderTargetProgress(kpi);
   renderInvestors(C.groupByInvestor(COMPUTED));
   renderComponentCost(C.computeAverageComponentCost(COMPUTED));
@@ -349,6 +358,51 @@ function renderClientChart(perClient) {
   });
 }
 
+/** Tabulasi Omset per Bulan — pelengkap chart batang, angka pasti untuk laporan/keputusan. */
+function renderMonthlyTable(perMonth) {
+  const body = qs('#monthlyBody');
+  if (!body) return;
+  const rows = [...perMonth].reverse(); // terbaru di atas
+  body.innerHTML = rows.map((m) => `
+    <tr>
+      <td class="wrap">${m.bulan}</td>
+      <td>${fmtRp(m.omset)}</td>
+      <td>${fmtRp(m.modal)}</td>
+      <td>${fmtRp(m.labaKotor)}</td>
+      <td>${fmtPct(m.margin)}</td>
+      <td>${m.jumlahProyek}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
+}
+
+/**
+ * Tabulasi Kontribusi Klien — plus catatan konsentrasi otomatis: kalau 1 klien menyumbang
+ * porsi omset terlalu besar, itu risiko yang layak diketahui untuk keputusan (diversifikasi
+ * klien, negosiasi kontrak, dsb), bukan cuma angka mentah.
+ */
+function renderClientTable(perClient) {
+  const body = qs('#clientBody');
+  const note = qs('#clientConcentrationNote');
+  if (!body) return;
+  body.innerHTML = perClient.map((c) => `
+    <tr>
+      <td class="wrap">${esc(c.klien)}</td>
+      <td>${fmtRp(c.omset)}</td>
+      <td>${c.jumlahProyek}</td>
+      <td>${fmtPct(c.kontribusi)}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
+
+  if (!note) return;
+  if (!perClient.length) { note.textContent = ''; return; }
+  const top = perClient[0];
+  if (top.kontribusi >= 0.4) {
+    note.innerHTML = `⚠ <b>${esc(top.klien)}</b> menyumbang ${fmtPct(top.kontribusi)} dari total omset — konsentrasi tinggi pada satu klien, pertimbangkan diversifikasi klien untuk mengurangi risiko.`;
+  } else if (perClient.length >= 3 && (perClient[0].kontribusi + perClient[1].kontribusi + perClient[2].kontribusi) >= 0.6) {
+    note.textContent = '3 klien teratas menyumbang lebih dari 60% omset — cukup terkonsentrasi, layak dipantau.';
+  } else {
+    note.textContent = 'Distribusi omset antar klien relatif tersebar, tidak bergantung pada satu klien dominan.';
+  }
+}
+
 /* ===================== Target progress ===================== */
 function renderTargetProgress(k) {
   const rows = [
@@ -400,8 +454,10 @@ function renderInvestors(list) {
       <td class="wrap">${esc(p.investor)}</td>
       <td>${fmtDate(p.tanggalTransfer)}</td>
       <td>${fmtRp(p.totalPengembalian)}</td>
-      <td><span class="badge ${p.status.level === 'ok' ? 'ok' : p.status.level === 'danger' ? 'danger' : 'warn'}">${p.status.label}</span></td>
-    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
+      <td><span class="badge ${p.status.level}">${p.status.dot} ${p.status.label}</span></td>
+      <td class="wrap">${esc(p.keterangan) || '—'}</td>
+      <td class="wrap">${esc(p.kendala) || '—'}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
 }
 
 /* ===================== Component cost ===================== */
@@ -480,11 +536,14 @@ function applyTableFilters() {
       <td>${fmtRp(p.modalKerja)}</td>
       <td>${fmtRp(p.keuntunganNet)}</td>
       <td class="wrap">${esc(p.investor)}</td>
+      <td>${p.penawaranFile && p.penawaranFile.url
+        ? `<a href="${esc(p.penawaranFile.url)}" target="_blank" rel="noopener" class="icon-btn" title="Download ${esc(p.penawaranFile.fileName || '')}">⬇</a>`
+        : '<span style="color:var(--ink-faint)">—</span>'}</td>
       <td class="row-actions">
         <button class="icon-btn" data-edit="${p.id}" title="Ubah">✎</button>
         <button class="icon-btn danger" data-del="${p.id}" title="Hapus">🗑</button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
 
   qsa('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openForm(btn.dataset.edit)));
   qsa('[data-del]').forEach((btn) => btn.addEventListener('click', () => handleDelete(btn.dataset.del)));
@@ -527,6 +586,7 @@ function wireForm() {
 
   qs('#formCancelBtn').addEventListener('click', closeForm);
   qs('#formOverlay').addEventListener('click', (e) => { if (e.target.id === 'formOverlay') closeForm(); });
+  wirePenawaranUpload();
 
   const form = qs('#projectForm');
   const forecastFieldIds = ['f_modalKerja', 'f_biayaPersonil', 'f_biayaDokumen', 'f_biayaOperasional'];
@@ -596,16 +656,76 @@ function openForm(id) {
     qs('#f_p_penagihan').checked = !!pr.penagihan;
     qs('#f_p_bayar').checked = !!pr.pembayaran;
     qs('#formDeleteBtn').style.display = 'inline-flex';
+    renderPenawaranSection(p);
   } else {
     qs('#formTitle').textContent = 'Tambah Proyek Baru';
     qs('#f_feeCB').value = 0;
     qs('#formDeleteBtn').style.display = 'none';
+    qs('#penawaranEmptyNote').style.display = 'block';
+    qs('#penawaranManager').style.display = 'none';
   }
   qs('#formDeleteBtn').onclick = () => { if (id) { closeForm(); handleDelete(id); } };
 
   updateLivePreview();
   qs('#formOverlay').style.display = 'flex';
   qs('#f_perusahaan').focus();
+}
+
+/** Tampilkan status file surat penawaran (ada/tidak) untuk proyek yang sedang diedit. */
+function renderPenawaranSection(p) {
+  qs('#penawaranEmptyNote').style.display = 'none';
+  qs('#penawaranManager').style.display = 'block';
+  qs('#penawaranError').textContent = '';
+  qs('#penawaranFileInput').value = '';
+  const cur = qs('#penawaranCurrent');
+  if (p.penawaranFile && p.penawaranFile.url) {
+    cur.style.display = 'flex';
+    qs('#penawaranDownloadLink').href = p.penawaranFile.url;
+    qs('#penawaranFileName').textContent = p.penawaranFile.fileName || 'surat-penawaran';
+  } else {
+    cur.style.display = 'none';
+  }
+}
+
+function wirePenawaranUpload() {
+  qs('#penawaranFileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file || !EDITING_ID) return;
+    const errEl = qs('#penawaranError');
+    errEl.textContent = '';
+    if (file.size > 15 * 1024 * 1024) {
+      errEl.textContent = 'File terlalu besar (maks 15MB).';
+      e.target.value = '';
+      return;
+    }
+    qs('#penawaranUploading').style.display = 'block';
+    try {
+      const meta = await DB.uploadPenawaranFile(EDITING_ID, file);
+      qs('#penawaranCurrent').style.display = 'flex';
+      qs('#penawaranDownloadLink').href = meta.url;
+      qs('#penawaranFileName').textContent = meta.fileName;
+      toast('Surat penawaran berhasil diunggah.', 'success');
+    } catch (err) {
+      errEl.textContent = 'Gagal mengunggah: ' + err.message;
+    } finally {
+      qs('#penawaranUploading').style.display = 'none';
+      e.target.value = '';
+    }
+  });
+
+  qs('#penawaranDeleteBtn').addEventListener('click', async () => {
+    if (!EDITING_ID) return;
+    if (!confirm('Hapus file surat penawaran ini?')) return;
+    const p = RAW_PROJECTS.find((x) => x.id === EDITING_ID);
+    const path = p && p.penawaranFile ? p.penawaranFile.path : null;
+    try {
+      await DB.deletePenawaranFile(EDITING_ID, path);
+      qs('#penawaranCurrent').style.display = 'none';
+      toast('File surat penawaran dihapus.', 'success');
+    } catch (err) {
+      toast('Gagal menghapus: ' + err.message, 'error');
+    }
+  });
 }
 
 function closeForm() {
