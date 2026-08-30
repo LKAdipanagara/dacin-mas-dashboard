@@ -64,7 +64,12 @@ async function boot() {
     }
   });
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // updateViaCache:'none' — paksa browser SELALU cek sw.js langsung ke jaringan
+    // (bypass HTTP cache) tiap kali halaman dimuat. Tanpa ini, browser bisa terus
+    // memakai byte sw.js lama dari cache biasa sehingga bump versi CACHE_NAME di
+    // dalam sw.js tidak pernah terdeteksi — inilah sumber "belum ada perubahan"
+    // yang berulang kali muncul walau file sudah ter-upload & Vercel sudah deploy.
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
   }
   window.addEventListener('online', updateOnlineBadge);
   window.addEventListener('offline', updateOnlineBadge);
