@@ -9,11 +9,8 @@ import {
 import {
   getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
 } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js';
-import {
-  getStorage, ref, uploadBytes, getDownloadURL, deleteObject,
-} from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-storage.js';
 
-let app, db, auth, storage;
+let app, db, auth;
 let firebaseReady = false;
 let firebaseInitError = null;
 
@@ -35,7 +32,6 @@ export function initFirebase() {
       db = initializeFirestore(app, {});
     }
     auth = getAuth(app);
-    storage = getStorage(app);
     firebaseReady = true;
     return { ok: true };
   } catch (err) {
@@ -113,30 +109,23 @@ export async function deleteProject(id) {
   await deleteDoc(doc(db, PROJECTS_COL, id));
 }
 
-/* ===================== Surat Penawaran (file per proyek) ===================== */
+/* ===================== Surat Penawaran (link Google Drive per proyek) ===================== */
 /**
- * Upload file surat penawaran (PDF/Word) untuk satu proyek ke Firebase Storage,
- * lalu simpan metadata-nya (url, path, nama file) ke field `penawaranFile` pada
- * dokumen proyek. Pakai updateDoc (bukan sanitizeForWrite) supaya tidak menimpa
+ * Simpan link Google Drive (atau link cloud lain) surat penawaran untuk satu proyek.
+ * Tidak ada file yang di-upload ke server manapun — hanya link + keterangan disimpan
+ * di field `penawaranFile` pada dokumen proyek. Pilihan ini dipakai karena Cloud
+ * Storage untuk project Firebase-nya butuh upgrade ke paket Blaze (berbayar), yang
+ * belum diaktifkan. Pakai updateDoc (bukan sanitizeForWrite) supaya tidak menimpa
  * field lain proyek yang sedang tidak diedit.
  */
-export async function uploadPenawaranFile(projectId, file) {
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const path = `penawaran/${projectId}/${Date.now()}_${safeName}`;
-  const fileRef = ref(storage, path);
-  await uploadBytes(fileRef, file);
-  const url = await getDownloadURL(fileRef);
-  const meta = { url, path, fileName: file.name, uploadedAt: Timestamp.now() };
+export async function savePenawaranLink(projectId, url, label) {
+  const meta = { url: String(url).trim(), label: String(label || '').trim(), savedAt: Timestamp.now() };
   await updateDoc(doc(db, PROJECTS_COL, projectId), { penawaranFile: meta });
   return meta;
 }
 
-/** Hapus file surat penawaran yang tersimpan (Storage + field-nya di Firestore). */
-export async function deletePenawaranFile(projectId, storagePath) {
-  if (storagePath) {
-    try { await deleteObject(ref(storage, storagePath)); }
-    catch (err) { console.warn('[db] Gagal hapus file di Storage (mungkin sudah terhapus):', err.message); }
-  }
+/** Hapus link surat penawaran yang tersimpan. */
+export async function removePenawaranLink(projectId) {
   await updateDoc(doc(db, PROJECTS_COL, projectId), { penawaranFile: null });
 }
 

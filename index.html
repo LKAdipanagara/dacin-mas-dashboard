@@ -202,10 +202,11 @@
 
     <div class="section-head"><div><div class="eyebrow">Pemantauan</div><h2>Progres Dana per Proyek</h2></div></div>
     <div class="status-legend" id="statusLegend">
-      <span><i class="ok"></i>Baru Masuk Pekerjaan (≤30 hari)</span>
-      <span><i class="warn"></i>Mendekati Deadline Waktu (31-60 hari)</span>
-      <span><i class="danger"></i>Peringatan Mendekati Pembayaran (&gt;60 hari)</span>
-      <span><i class="info"></i>Selesai &amp; Lunas ke Investor</span>
+      <span><i class="ok"></i>Dana Baru Masuk (0-30 hari)</span>
+      <span><i class="warn"></i>Dalam Pengerjaan (31-60 hari)</span>
+      <span><i class="danger"></i>Perlu Percepatan (61-90 hari)</span>
+      <span><i class="overdue"></i>Sudah Jatuh Tempo / Follow Up Urgent (&gt;90 hari)</span>
+      <span><i class="info"></i>Lunas - Dana Kembali ke Investor</span>
       <span><i class="neutral"></i>Belum Ada Dana</span>
     </div>
     <div class="table-wrap">
@@ -279,15 +280,16 @@
 
         <details class="detail-block" id="penawaranBlock">
           <summary>Surat Penawaran (opsional)</summary>
-          <p class="section-note" id="penawaranEmptyNote" style="margin-top:10px">Simpan proyek ini dulu (klik Simpan), lalu buka lagi untuk mengunggah file surat penawaran.</p>
+          <p class="section-note" id="penawaranEmptyNote" style="margin-top:10px">Simpan proyek ini dulu (klik Simpan), lalu buka lagi untuk menambahkan link surat penawaran.</p>
           <div id="penawaranManager" style="display:none;margin-top:10px">
             <div id="penawaranCurrent" style="display:none;margin-bottom:12px;align-items:center;gap:8px">
-              <a id="penawaranDownloadLink" href="#" target="_blank" rel="noopener" class="btn">⬇ <span id="penawaranFileName">—</span></a>
-              <button type="button" class="btn danger-text" id="penawaranDeleteBtn" style="margin-left:8px">Hapus File</button>
+              <a id="penawaranDownloadLink" href="#" target="_blank" rel="noopener" class="btn">↗ <span id="penawaranFileName">—</span></a>
+              <button type="button" class="btn danger-text" id="penawaranDeleteBtn" style="margin-left:8px">Hapus Link</button>
             </div>
-            <label>Upload File Baru (PDF/Word, maks 15MB)<input type="file" id="penawaranFileInput" accept=".pdf,.doc,.docx"></label>
+            <label>Link Google Drive Surat Penawaran<input type="url" id="penawaranUrlInput" placeholder="https://drive.google.com/..."></label>
+            <label>Keterangan singkat (opsional)<input type="text" id="penawaranLabelInput" placeholder="mis. Revisi 2 - 30 Agu 2026"></label>
+            <button type="button" class="btn" id="penawaranSaveBtn" style="margin-top:8px">Simpan Link</button>
             <p class="field-error" id="penawaranError"></p>
-            <p class="section-note" id="penawaranUploading" style="display:none">Mengunggah…</p>
           </div>
         </details>
 

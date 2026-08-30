@@ -537,7 +537,7 @@ function applyTableFilters() {
       <td>${fmtRp(p.keuntunganNet)}</td>
       <td class="wrap">${esc(p.investor)}</td>
       <td>${p.penawaranFile && p.penawaranFile.url
-        ? `<a href="${esc(p.penawaranFile.url)}" target="_blank" rel="noopener" class="icon-btn" title="Download ${esc(p.penawaranFile.fileName || '')}">⬇</a>`
+        ? `<a href="${esc(p.penawaranFile.url)}" target="_blank" rel="noopener" class="icon-btn" title="Buka ${esc(p.penawaranFile.label || 'Surat Penawaran')}">🔗</a>`
         : '<span style="color:var(--ink-faint)">—</span>'}</td>
       <td class="row-actions">
         <button class="icon-btn" data-edit="${p.id}" title="Ubah">✎</button>
@@ -586,7 +586,7 @@ function wireForm() {
 
   qs('#formCancelBtn').addEventListener('click', closeForm);
   qs('#formOverlay').addEventListener('click', (e) => { if (e.target.id === 'formOverlay') closeForm(); });
-  wirePenawaranUpload();
+  wirePenawaranLink();
 
   const form = qs('#projectForm');
   const forecastFieldIds = ['f_modalKerja', 'f_biayaPersonil', 'f_biayaDokumen', 'f_biayaOperasional'];
@@ -671,57 +671,55 @@ function openForm(id) {
   qs('#f_perusahaan').focus();
 }
 
-/** Tampilkan status file surat penawaran (ada/tidak) untuk proyek yang sedang diedit. */
+/** Tampilkan status link surat penawaran (ada/tidak) untuk proyek yang sedang diedit. */
 function renderPenawaranSection(p) {
   qs('#penawaranEmptyNote').style.display = 'none';
   qs('#penawaranManager').style.display = 'block';
   qs('#penawaranError').textContent = '';
-  qs('#penawaranFileInput').value = '';
+  qs('#penawaranUrlInput').value = '';
+  qs('#penawaranLabelInput').value = '';
   const cur = qs('#penawaranCurrent');
   if (p.penawaranFile && p.penawaranFile.url) {
     cur.style.display = 'flex';
     qs('#penawaranDownloadLink').href = p.penawaranFile.url;
-    qs('#penawaranFileName').textContent = p.penawaranFile.fileName || 'surat-penawaran';
+    qs('#penawaranFileName').textContent = p.penawaranFile.label || 'Buka Surat Penawaran';
   } else {
     cur.style.display = 'none';
   }
 }
 
-function wirePenawaranUpload() {
-  qs('#penawaranFileInput').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file || !EDITING_ID) return;
+/** Surat penawaran disimpan sebagai LINK (mis. Google Drive), bukan file upload —
+ *  Cloud Storage Firebase untuk project ini butuh paket Blaze (berbayar) yang belum
+ *  diaktifkan, jadi pendekatan link ini tidak butuh upgrade apapun. */
+function wirePenawaranLink() {
+  qs('#penawaranSaveBtn').addEventListener('click', async () => {
+    if (!EDITING_ID) return;
     const errEl = qs('#penawaranError');
     errEl.textContent = '';
-    if (file.size > 15 * 1024 * 1024) {
-      errEl.textContent = 'File terlalu besar (maks 15MB).';
-      e.target.value = '';
-      return;
-    }
-    qs('#penawaranUploading').style.display = 'block';
+    const url = qs('#penawaranUrlInput').value.trim();
+    const label = qs('#penawaranLabelInput').value.trim();
+    if (!url) { errEl.textContent = 'Isi link Google Drive-nya dulu.'; return; }
+    if (!/^https?:\/\//i.test(url)) { errEl.textContent = 'Link harus diawali http:// atau https://'; return; }
     try {
-      const meta = await DB.uploadPenawaranFile(EDITING_ID, file);
+      const meta = await DB.savePenawaranLink(EDITING_ID, url, label);
       qs('#penawaranCurrent').style.display = 'flex';
       qs('#penawaranDownloadLink').href = meta.url;
-      qs('#penawaranFileName').textContent = meta.fileName;
-      toast('Surat penawaran berhasil diunggah.', 'success');
+      qs('#penawaranFileName').textContent = meta.label || 'Buka Surat Penawaran';
+      qs('#penawaranUrlInput').value = '';
+      qs('#penawaranLabelInput').value = '';
+      toast('Link surat penawaran disimpan.', 'success');
     } catch (err) {
-      errEl.textContent = 'Gagal mengunggah: ' + err.message;
-    } finally {
-      qs('#penawaranUploading').style.display = 'none';
-      e.target.value = '';
+      errEl.textContent = 'Gagal menyimpan: ' + err.message;
     }
   });
 
   qs('#penawaranDeleteBtn').addEventListener('click', async () => {
     if (!EDITING_ID) return;
-    if (!confirm('Hapus file surat penawaran ini?')) return;
-    const p = RAW_PROJECTS.find((x) => x.id === EDITING_ID);
-    const path = p && p.penawaranFile ? p.penawaranFile.path : null;
+    if (!confirm('Hapus link surat penawaran ini?')) return;
     try {
-      await DB.deletePenawaranFile(EDITING_ID, path);
+      await DB.removePenawaranLink(EDITING_ID);
       qs('#penawaranCurrent').style.display = 'none';
-      toast('File surat penawaran dihapus.', 'success');
+      toast('Link surat penawaran dihapus.', 'success');
     } catch (err) {
       toast('Gagal menghapus: ' + err.message, 'error');
     }
