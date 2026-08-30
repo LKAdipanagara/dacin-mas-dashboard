@@ -864,10 +864,31 @@ function populateSettingsForm() {
   qs('#s_layakMinMargin').value = (SETTINGS.layakMinMargin * 100).toFixed(2);
 }
 
-/* ===================== Install prompt ===================== */
+/* ===================== Install prompt (Android/desktop + iOS) ===================== */
 function wireInstall() {
   const btn = qs('#installBtn');
   let deferredPrompt = null;
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+
+  if (isStandalone) return; // sudah terinstal, tidak perlu tombol apapun
+
+  if (isIOS) {
+    // Safari iOS tidak pernah mengirim 'beforeinstallprompt' — satu-satunya cara
+    // instal adalah manual lewat menu Share bawaan Safari. Tombol Instal di sini
+    // tidak memicu instal langsung, cuma membuka panduan langkah-langkahnya.
+    btn.style.display = 'inline-flex';
+    const overlay = qs('#iosInstallOverlay');
+    const openHint = () => { overlay.style.display = 'flex'; };
+    const closeHint = () => { overlay.style.display = 'none'; };
+    btn.addEventListener('click', openHint);
+    qs('#iosInstallCloseBtn').addEventListener('click', closeHint);
+    qs('#iosInstallCloseBtn2').addEventListener('click', closeHint);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHint(); });
+    return;
+  }
+
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; btn.style.display = 'inline-flex'; });
   btn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
