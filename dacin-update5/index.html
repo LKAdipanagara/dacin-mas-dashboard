@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dacin Mas — Panel Kendali Proyek</title>
+<meta name="description" content="Pencatatan proyek, bagi hasil investor, dan monitoring threshold pajak PP 20/2026 untuk CV Dacin Mas Calibration Services — sinkron real-time dari HP maupun web.">
+<meta name="theme-color" content="#12161A">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- ===== Config error (firebase-config.js belum diisi) ===== -->
+<div id="configError" class="full-screen-msg" style="display:none">
+  <div class="msg-box">
+    <h2>⚙ Aplikasi belum terhubung ke database</h2>
+    <p id="configErrorMsg">—</p>
+    <p class="section-note">Lihat file <code>README.md</code> untuk panduan lengkap menghubungkan Firebase.</p>
+  </div>
+</div>
+
+<!-- ===== Login screen ===== -->
+<div id="loginScreen" class="full-screen-msg" style="display:none">
+  <form id="loginForm" class="login-box">
+    <img class="brand-mark" src="./brand-icon.png" alt="Dacin Mas" style="width:56px;height:56px;margin:0 auto 14px;display:block">
+    <h1>DACIN MAS</h1>
+    <p class="section-note" style="text-align:center;margin-bottom:20px">Masuk untuk mencatat &amp; memantau proyek</p>
+    <label>Email<input type="email" id="loginEmail" required autocomplete="username"></label>
+    <label>Password<input type="password" id="loginPassword" required autocomplete="current-password"></label>
+    <p class="field-error" id="loginError"></p>
+    <button type="submit" class="btn btn-primary" id="loginSubmitBtn" style="width:100%;justify-content:center;margin-top:8px">Masuk</button>
+  </form>
+</div>
+
+<!-- ===== App root ===== -->
+<div id="appRoot" style="display:none">
+
+<div id="onlineBadge" class="online-badge" style="display:none"></div>
+
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand">
+      <img class="brand-mark" src="./brand-icon.png" alt="Dacin Mas">
+      <div class="brand-text">
+        <span class="name">DACIN MAS</span>
+        <span class="sub" id="userEmail">PANEL KENDALI PROYEK</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="installBtn" title="Instal aplikasi" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v13m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
+        <span class="upload-label">Instal</span>
+      </button>
+      <button class="btn" id="settingsBtn" title="Pengaturan target &amp; pajak">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </button>
+      <button class="btn" id="logoutBtn" title="Keluar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+  <nav class="tabbar">
+    <button class="tab active" data-target="view-ringkasan"><span class="num">01</span>Ringkasan</button>
+    <button class="tab" data-target="view-omset"><span class="num">02</span>Omset</button>
+    <button class="tab" data-target="view-target"><span class="num">03</span>Target</button>
+    <button class="tab" data-target="view-proyek"><span class="num">04</span>Proyek</button>
+    <button class="tab" data-target="view-investor"><span class="num">05</span>Investor</button>
+    <button class="tab" data-target="view-biaya"><span class="num">06</span>Biaya</button>
+  </nav>
+</header>
+
+<main>
+
+  <div class="panel seed-banner" id="seedBanner" style="display:none">
+    <div>
+      <strong>Data masih kosong.</strong>
+      <p class="section-note">Impor 30 proyek awal dari catatan Excel sebelumnya, atau langsung mulai catat proyek baru lewat tombol "Tambah Proyek".</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn" id="seedDismissBtn">Lewati</button>
+      <button class="btn btn-primary" id="seedImportBtn">Impor Data Awal</button>
+    </div>
+  </div>
+
+  <!-- ===== 01 RINGKASAN ===== -->
+  <section class="view active" id="view-ringkasan">
+    <div class="section-head">
+      <div><div class="eyebrow">Instrumentasi</div><h2>Ringkasan Kinerja</h2></div>
+      <p class="section-note">Terhitung otomatis &amp; real-time dari seluruh proyek tercatat.</p>
+    </div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="section-head">
+      <div><div class="eyebrow">Kalibrasi Kepatuhan</div><h2>Threshold PKP — PP No. 20 Tahun 2026</h2></div>
+    </div>
+    <div class="panel panel-pad">
+      <div class="gauge-wrap">
+        <div class="gauge-figure">
+          <svg viewBox="0 0 260 200" width="100%">
+            <g id="gaugeArcs"></g>
+            <g id="gaugeTicks"></g>
+            <line id="gaugeNeedle" x1="130" y1="130" x2="130" y2="42" stroke="#ECE7DD" stroke-width="3" stroke-linecap="round" transform="rotate(-120)"/>
+            <circle cx="130" cy="130" r="7" fill="#C69A52" stroke="#12161A" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="gauge-copy">
+          <span class="status-badge ok" id="gaugeBadge">Memuat…</span>
+          <h3>Posisi Omset terhadap Batas PKP</h3>
+          <p>Jika akumulasi omset tahun berjalan melewati batas, CV Dacin Mas wajib PKP dan beralih ke PPh normal dengan pembukuan penuh (PP No. 20/2026).</p>
+          <div class="gauge-numbers">
+            <div><div class="n" id="gaugeOmset">—</div><div class="l">Omset YTD</div></div>
+            <div><div class="n" id="gaugeSisa">—</div><div class="l">Sisa Threshold</div></div>
+            <div><div class="n" id="gaugeThreshold">—</div><div class="l">Batas PKP</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 02 OMSET ===== -->
+  <section class="view" id="view-omset">
+    <div class="section-head"><div><div class="eyebrow">Pembacaan Bulanan</div><h2>Omset &amp; Modal Kerja per Bulan</h2></div></div>
+    <div class="grid-2">
+      <div class="panel panel-pad chart-card"><canvas id="monthlyChart"></canvas></div>
+      <div class="panel panel-pad chart-card">
+        <div class="section-head" style="margin:0 0 10px"><div><div class="eyebrow">Distribusi</div><h2 style="font-size:14px">Omset per Klien</h2></div></div>
+        <canvas id="clientChart"></canvas>
+      </div>
+    </div>
+
+    <div class="section-head"><div><div class="eyebrow">Tabulasi</div><h2>Rincian Omset per Bulan</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bulan</th><th>Omset</th><th>Modal Kerja</th><th>Laba Kotor</th><th>Margin</th><th>Jml Proyek</th></tr></thead>
+        <tbody id="monthlyBody"></tbody>
+      </table>
+    </div>
+
+    <div class="section-head"><div><div class="eyebrow">Tabulasi</div><h2>Kontribusi &amp; Konsentrasi Klien</h2></div></div>
+    <p class="section-note" id="clientConcentrationNote"></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Klien</th><th>Omset</th><th>Jml Proyek</th><th>Kontribusi</th></tr></thead>
+        <tbody id="clientBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== 03 TARGET ===== -->
+  <section class="view" id="view-target">
+    <div class="section-head"><div><div class="eyebrow">Ketercapaian</div><h2>Target Omzet Tahunan</h2></div></div>
+    <div class="panel panel-pad" id="targetProgress"></div>
+
+    <div class="section-head"><div><div class="eyebrow">Rincian</div><h2>Status per Bulan</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Bulan</th><th>Realisasi</th><th>Target T1</th><th>Status T1</th><th>Target T2</th><th>Status T2</th></tr></thead>
+        <tbody id="targetMonthlyBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== 04 PROYEK (CRUD) ===== -->
+  <section class="view" id="view-proyek">
+    <div class="section-head">
+      <div><div class="eyebrow">Log Proyek</div><h2>Daftar Proyek</h2></div>
+      <button class="btn btn-primary" id="addProjectBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Tambah Proyek
+      </button>
+    </div>
+    <p class="section-note" id="tableCount"></p>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Cari perusahaan, No PO, atau jenis pekerjaan…">
+      <select id="filterInvestor"></select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th data-sort="tanggalTransfer">Tgl Transfer <span class="arrow">↓</span></th>
+          <th data-sort="perusahaan">Perusahaan <span class="arrow"></span></th>
+          <th data-sort="jenisPekerjaan">Jenis Pekerjaan <span class="arrow"></span></th>
+          <th data-sort="nilaiKontrak">Nilai Kontrak <span class="arrow"></span></th>
+          <th data-sort="modalKerja">Modal Kerja <span class="arrow"></span></th>
+          <th data-sort="keuntunganNet">Untung Net <span class="arrow"></span></th>
+          <th data-sort="investor">Investor <span class="arrow"></span></th>
+          <th>Penawaran</th>
+          <th>Aksi</th>
+        </tr></thead>
+        <tbody id="projectsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== 05 INVESTOR ===== -->
+  <section class="view" id="view-investor">
+    <div class="section-head"><div><div class="eyebrow">Kemitraan</div><h2>Bagi Hasil per Investor</h2></div></div>
+    <div class="investor-grid" id="investorGrid"></div>
+
+    <div class="section-head"><div><div class="eyebrow">Pemantauan</div><h2>Progres Dana per Proyek</h2></div></div>
+    <div class="status-legend" id="statusLegend">
+      <span><i class="ok"></i>Dana Baru Masuk (0-30 hari)</span>
+      <span><i class="warn"></i>Dalam Pengerjaan (31-60 hari)</span>
+      <span><i class="danger"></i>Perlu Percepatan (61-90 hari)</span>
+      <span><i class="overdue"></i>Sudah Jatuh Tempo / Follow Up Urgent (&gt;90 hari)</span>
+      <span><i class="info"></i>Lunas - Dana Kembali ke Investor</span>
+      <span><i class="neutral"></i>Belum Ada Dana</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Perusahaan</th><th>Investor</th><th>Tgl Transfer</th><th>Total Kembali</th><th>Status</th><th>Keterangan</th><th>Kendala</th></tr></thead>
+        <tbody id="progressBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== 06 BIAYA ===== -->
+  <section class="view" id="view-biaya">
+    <div class="section-head"><div><div class="eyebrow">Rata-rata</div><h2>Komposisi Biaya terhadap Nilai Kontrak</h2></div></div>
+    <div class="grid-2">
+      <div class="panel panel-pad chart-card"><canvas id="costChart"></canvas></div>
+      <div class="panel panel-pad">
+        <div class="kpi-grid" style="grid-template-columns:1fr">
+          <div><div class="label" style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-dim);text-transform:uppercase">Rata-rata Biaya Personil</div><div class="value small" id="avgPersonil">—</div></div>
+          <div style="margin-top:14px"><div class="label" style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-dim);text-transform:uppercase">Rata-rata Dokumen/Sertifikat</div><div class="value small" id="avgDokumen">—</div></div>
+          <div style="margin-top:14px"><div class="label" style="font-family:var(--font-mono);font-size:10.5px;color:var(--ink-dim);text-transform:uppercase">Rata-rata Operasional</div><div class="value small" id="avgOperasional">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="section-head"><div><div class="eyebrow">Rincian</div><h2>Per Proyek</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Perusahaan</th><th>Nilai Kontrak</th><th>% Personil</th><th>% Dokumen</th><th>% Operasional</th><th>% Total Modal</th></tr></thead>
+        <tbody id="costBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+</main>
+
+<footer>DACIN MAS CALIBRATION SERVICES — PANEL KENDALI PROYEK · SINKRON REAL-TIME</footer>
+</div>
+<!-- /appRoot -->
+
+<!-- ===== Modal: Tambah/Ubah Proyek ===== -->
+<div id="formOverlay" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <form id="projectForm">
+      <div class="modal-head">
+        <h3 id="formTitle">Tambah Proyek Baru</h3>
+        <button type="button" class="icon-btn" id="formCancelBtn">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="form-grid">
+          <label>Tanggal PO<input type="date" id="f_tanggalPO"></label>
+          <label>No PO<input type="text" id="f_noPO"><span class="field-error" id="err_noPO"></span></label>
+          <label class="span-2">Perusahaan<input type="text" id="f_perusahaan" required><span class="field-error" id="err_perusahaan"></span></label>
+          <label>Tanggal Transfer (Modal Masuk)<input type="date" id="f_tanggalTransfer"><span class="field-error" id="err_tanggalTransfer"></span></label>
+          <label>Investor / Sumber Dana<input type="text" id="f_investor" list="investorOptions"><datalist id="investorOptions"></datalist><span class="field-error" id="err_investor"></span></label>
+          <label>Nilai Kontrak (Rp)<input type="number" id="f_nilaiKontrak" min="0" step="1" required><span class="field-error" id="err_nilaiKontrak"></span></label>
+          <label>Kebutuhan Modal Kerja (Rp)<input type="number" id="f_modalKerja" min="0" step="1" required><span class="field-error" id="err_modalKerja"></span></label>
+          <p class="section-note span-2" id="forecastHint" style="display:none;margin:-8px 0 0"></p>
+          <label class="span-2">Jenis Pekerjaan<input type="text" id="f_jenisPekerjaan" list="jobOptions"><datalist id="jobOptions"></datalist></label>
+          <label>Fee CB (Rp)<input type="number" id="f_feeCB" min="0" step="1"><span class="field-error" id="err_feeCB"></span></label>
+        </div>
+        <p class="field-error" id="dupWarning" style="margin-top:-4px"></p>
+
+        <details class="detail-block">
+          <summary>Rincian Komponen Biaya (opsional)</summary>
+          <div class="form-grid" style="margin-top:12px">
+            <label>Biaya Personil/Tenaga Ahli<input type="number" id="f_biayaPersonil" min="0" step="1"></label>
+            <label>Dokumen/Sertifikat<input type="number" id="f_biayaDokumen" min="0" step="1"></label>
+            <label>Operasional<input type="number" id="f_biayaOperasional" min="0" step="1"></label>
+          </div>
+        </details>
+
+        <details class="detail-block" id="penawaranBlock">
+          <summary>Surat Penawaran (opsional)</summary>
+          <p class="section-note" id="penawaranEmptyNote" style="margin-top:10px">Simpan proyek ini dulu (klik Simpan), lalu buka lagi untuk menambahkan link surat penawaran.</p>
+          <div id="penawaranManager" style="display:none;margin-top:10px">
+            <div id="penawaranCurrent" style="display:none;margin-bottom:12px;align-items:center;gap:8px">
+              <a id="penawaranDownloadLink" href="#" target="_blank" rel="noopener" class="btn">↗ <span id="penawaranFileName">—</span></a>
+              <button type="button" class="btn danger-text" id="penawaranDeleteBtn" style="margin-left:8px">Hapus Link</button>
+            </div>
+            <label>Link Google Drive Surat Penawaran<input type="url" id="penawaranUrlInput" placeholder="https://drive.google.com/..."></label>
+            <label>Keterangan singkat (opsional)<input type="text" id="penawaranLabelInput" placeholder="mis. Revisi 2 - 30 Agu 2026"></label>
+            <button type="button" class="btn" id="penawaranSaveBtn" style="margin-top:8px">Simpan Link</button>
+            <p class="field-error" id="penawaranError"></p>
+          </div>
+        </details>
+
+        <details class="detail-block">
+          <summary>Progres &amp; Catatan (opsional)</summary>
+          <div class="checkbox-row">
+            <label class="check"><input type="checkbox" id="f_p_pengerjaan"> Pengerjaan</label>
+            <label class="check"><input type="checkbox" id="f_p_submit"> Submit Dokumen</label>
+            <label class="check"><input type="checkbox" id="f_p_penagihan"> Penagihan</label>
+            <label class="check"><input type="checkbox" id="f_p_bayar"> Pembayaran (Lunas)</label>
+          </div>
+          <label style="margin-top:10px">Kendala<input type="text" id="f_kendala" placeholder="mis. menunggu dokumen GR"></label>
+          <label style="margin-top:10px">Keterangan<textarea id="f_keterangan" rows="2"></textarea></label>
+        </details>
+
+        <div class="preview-box">
+          <div class="preview-title">Pratinjau Perhitungan Otomatis</div>
+          <div class="preview-grid">
+            <div><span>Keuntungan Bersih</span><b id="previewKeuntungan">—</b></div>
+            <div><span>Margin</span><b id="previewMargin">—</b></div>
+            <div><span>Bagi Hasil 30%</span><b id="previewBagiHasil">—</b></div>
+            <div><span>PPh Final 0,5%</span><b id="previewPPh">—</b></div>
+            <div><span>Keuntungan Net</span><b id="previewNet">—</b></div>
+            <div><span>Status Kelayakan</span><b><span class="badge" id="previewHasil">—</span></b></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn danger-text" id="formDeleteBtn" style="display:none">Hapus Proyek</button>
+        <div style="flex:1"></div>
+        <button type="button" class="btn" id="formCancelBtn2" onclick="document.getElementById('formCancelBtn').click()">Batal</button>
+        <button type="submit" class="btn btn-primary" id="formSubmitBtn">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===== Modal: Pengaturan ===== -->
+<div id="settingsOverlay" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:480px">
+    <form id="settingsForm">
+      <div class="modal-head"><h3>Pengaturan Target &amp; Pajak</h3><button type="button" class="icon-btn" id="settingsCancelBtn">✕</button></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <label>Target Omzet T1/tahun (Rp)<input type="number" id="s_targetT1" min="0" step="1"></label>
+          <label>Target Omzet T2/tahun (Rp)<input type="number" id="s_targetT2" min="0" step="1"></label>
+          <label class="span-2">Threshold PKP (Rp)<input type="number" id="s_thresholdPKP" min="0" step="1"></label>
+          <label>Bagi Hasil (%)<input type="number" id="s_bagiHasilRate" min="0" max="100" step="0.01"></label>
+          <label>PPh Final (%)<input type="number" id="s_pphFinalRate" min="0" max="100" step="0.01"></label>
+          <label class="span-2">Margin Minimum "Layak" (%)<input type="number" id="s_layakMinMargin" min="0" max="100" step="0.01"></label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <div style="flex:1"></div>
+        <button type="button" class="btn" id="settingsCancelBtn2" onclick="document.getElementById('settingsCancelBtn').click()">Batal</button>
+        <button type="submit" class="btn btn-primary" id="settingsSubmitBtn">Simpan Pengaturan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
