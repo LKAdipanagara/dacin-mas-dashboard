@@ -7,7 +7,7 @@ import {
   persistentLocalCache, persistentMultipleTabManager, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js';
 import {
-  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+  getAuth, signInWithEmailAndPassword, signInAnonymously, signOut, onAuthStateChanged,
 } from 'https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js';
 
 let app, db, auth;
@@ -46,6 +46,13 @@ export function getInitError() { return firebaseInitError; }
 /* ===================== Auth ===================== */
 export function login(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
+}
+/** Masuk sebagai tamu (mode Investor/Stakeholder - lihat saja) — dipakai untuk link
+ *  ?viewer=1. Butuh provider "Anonymous" diaktifkan di Firebase Console > Authentication
+ *  > Sign-in method. Hak akses baca/tulisnya diatur lewat firestore.rules (koleksi admins/),
+ *  bukan lewat kode ini - jadi ini murni cara masuk, bukan pengaman. */
+export function loginAnonymous() {
+  return signInAnonymously(auth);
 }
 export function logout() {
   return signOut(auth);
