@@ -77,6 +77,8 @@ function sanitizeForWrite(p) {
     investor: String(p.investor || '').trim(),
     jenisPekerjaan: String(p.jenisPekerjaan || '').trim(),
     feeCB: Number(p.feeCB) || 0,
+    pphPerusahaan: Number(p.pphPerusahaan) || 0,
+    ppnPerusahaan: Number(p.ppnPerusahaan) || 0,
     biayaPersonil: Number(p.biayaPersonil) || 0,
     biayaDokumen: Number(p.biayaDokumen) || 0,
     biayaOperasional: Number(p.biayaOperasional) || 0,

@@ -21,6 +21,13 @@ export function computeProject(p, settings = DEFAULT_SETTINGS) {
   const nilaiKontrak = toNumber(p.nilaiKontrak);
   const modalKerja = toNumber(p.modalKerja);
   const feeCB = toNumber(p.feeCB);
+  // Beberapa perusahaan klien memotong/membebankan PPh & PPN sendiri saat membayar ke
+  // Dacin (bukan pajak Dacin ke negara — lihat computeProject settings.pphFinalRate untuk
+  // itu). Nilainya berbeda-beda per proyek/klien, jadi diisi manual per proyek, bukan
+  // dihitung otomatis dari satu tarif tetap (menghindari mengarang angka/regulasi).
+  const pphPerusahaan = toNumber(p.pphPerusahaan);
+  const ppnPerusahaan = toNumber(p.ppnPerusahaan);
+  const pajakPerusahaan = pphPerusahaan + ppnPerusahaan;
 
   const keuntunganBersih = nilaiKontrak - modalKerja;
   const bagiHasil30 = keuntunganBersih * settings.bagiHasilRate;
@@ -28,11 +35,13 @@ export function computeProject(p, settings = DEFAULT_SETTINGS) {
   const pphFinal = nilaiKontrak * settings.pphFinalRate;
   const keuntunganSetelahBHPajak = keuntunganBersih - bagiHasil30 - pphFinal;
   const keuntunganNet = keuntunganSetelahBHPajak - feeCB;
+  const keuntunganNetSetelahPajakPerusahaan = keuntunganNet - pajakPerusahaan;
   const margin = nilaiKontrak > 0 ? keuntunganBersih / nilaiKontrak : 0;
   const hasilKelayakan = margin >= settings.layakMinMargin ? 'Layak' : 'Tidak Layak';
 
   return {
-    nilaiKontrak, modalKerja, feeCB,
+    nilaiKontrak, modalKerja, feeCB, pphPerusahaan, ppnPerusahaan, pajakPerusahaan,
+    keuntunganNetSetelahPajakPerusahaan,
     keuntunganBersih, bagiHasil30, totalPengembalian, pphFinal,
     keuntunganSetelahBHPajak, keuntunganNet, margin, hasilKelayakan,
   };
@@ -194,23 +203,28 @@ export function forecastComponentCost(nilaiKontrak, computedProjects) {
 }
 
 /**
- * Status dana investor per proyek, dengan skema warna tetap supaya gampang dikenali sekilas:
+ * Status dana investor per proyek — meniru persis skema warna & tenor 90 hari
+ * (3 bulan) yang selama ini dipakai manual di file Excel pemantauan progres:
  *   BIRU  = selesai pekerjaan & dana sudah lunas dikembalikan ke investor
- *   HIJAU = baru masuk pekerjaan (≤30 hari sejak dana masuk)
- *   KUNING = sudah mendekati deadline waktu (31-60 hari)
- *   MERAH = peringatan mendekati/lewat waktu pembayaran (>60 hari, belum lunas)
+ *   HIJAU = dana baru masuk (0-30 hari sejak Tgl Transfer)
+ *   KUNING = dalam pengerjaan, masih ada waktu (31-60 hari)
+ *   MERAH = perlu percepatan, mendekati jatuh tempo (61-90 hari, belum lunas)
+ *   UNGU  = sudah jatuh tempo / follow up urgent (>90 hari, belum lunas)
  *   ABU-ABU = belum ada dana masuk sama sekali (netral, belum berlaku status apapun)
+ * Tenor 90 hari ini diturunkan dari pola tanggal transfer vs status yang sudah
+ * ditandai manual oleh Lenggana di Excel (bukan angka bebas) — lihat riwayat proyek.
  */
 export function computeProgressStatus(p) {
   const progress = p.progress || {};
-  if (progress.pembayaran) return { label: 'Selesai & Lunas ke Investor', level: 'info', dot: '🔵' };
+  if (progress.pembayaran) return { label: 'Lunas - Dana Kembali ke Investor', level: 'info', dot: '🔵' };
   if (!p.tanggalTransfer) return { label: 'Belum Ada Dana', level: 'neutral', dot: '⚪' };
   const d = toDate(p.tanggalTransfer);
   if (!d) return { label: 'Cek Tanggal', level: 'warn', dot: '🟡' };
   const days = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (days <= 30) return { label: 'Baru Masuk Pekerjaan', level: 'ok', dot: '🟢' };
-  if (days <= 60) return { label: 'Mendekati Deadline Waktu', level: 'warn', dot: '🟡' };
-  return { label: 'Peringatan Mendekati Pembayaran', level: 'danger', dot: '🔴' };
+  if (days <= 30) return { label: 'Dana Baru Masuk', level: 'ok', dot: '🟢' };
+  if (days <= 60) return { label: 'Dalam Pengerjaan', level: 'warn', dot: '🟡' };
+  if (days <= 90) return { label: 'Perlu Percepatan', level: 'danger', dot: '🔴' };
+  return { label: 'Sudah Jatuh Tempo - Follow Up Urgent', level: 'overdue', dot: '🟣' };
 }
 
 /* ===================== Validation ===================== */
@@ -244,6 +258,8 @@ export function validateProject(p) {
   }
   const feeCB = toNumber(p.feeCB);
   if (feeCB < 0) errors.feeCB = 'Fee CB tidak boleh negatif.';
+  if (toNumber(p.pphPerusahaan) < 0) errors.pphPerusahaan = 'PPh tidak boleh negatif.';
+  if (toNumber(p.ppnPerusahaan) < 0) errors.ppnPerusahaan = 'PPN tidak boleh negatif.';
 
   return { valid: Object.keys(errors).length === 0, errors };
 }

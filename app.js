@@ -117,6 +117,7 @@ function showApp(user) {
   wireSeedBanner();
   wireLogout();
   wireSettingsForm();
+  wireBackupExport();
 
   unsubSettings = DB.watchSettings((s) => {
     SETTINGS = { ...C.DEFAULT_SETTINGS, ...(s || {}) };
@@ -453,16 +454,29 @@ function renderInvestors(list) {
 
   const rows = COMPUTED.filter((p) => p.tanggalTransfer).map((p) => ({ ...p, status: C.computeProgressStatus(p) }));
   rows.sort((a, b) => C.toDate(b.tanggalTransfer) - C.toDate(a.tanggalTransfer));
-  qs('#progressBody').innerHTML = rows.map((p) => `
+  qs('#progressBody').innerHTML = rows.map((p) => {
+    const sudahTagih = !!(p.progress || {}).penagihan;
+    return `
     <tr>
       <td class="wrap">${esc(p.perusahaan)}</td>
       <td class="wrap">${esc(p.investor)}</td>
       <td>${fmtDate(p.tanggalTransfer)}</td>
+      <td>${fmtRp(p.modalKerja)}</td>
+      <td>${fmtRp(p.nilaiKontrak)}</td>
+      <td>${fmtRp(p.keuntunganBersih)}</td>
+      <td>${fmtRp(p.bagiHasil30)}</td>
       <td>${fmtRp(p.totalPengembalian)}</td>
       <td><span class="badge ${p.status.level}">${p.status.dot} ${p.status.label}</span></td>
+      <td><span class="badge ${sudahTagih ? 'ok' : 'danger'}">${sudahTagih ? '🟢 Sudah Ditagih' : '🔴 Belum Tertagih'}</span></td>
       <td class="wrap">${esc(p.keterangan) || '—'}</td>
       <td class="wrap">${esc(p.kendala) || '—'}</td>
-    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
+    </tr>`;
+  }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
+
+  const belumTertagih = rows.filter((p) => !(p.progress || {}).penagihan);
+  const totalBelumTertagih = belumTertagih.reduce((a, p) => a + (p.nilaiKontrak || 0), 0);
+  qs('#belumTertagihCount').textContent = belumTertagih.length;
+  qs('#belumTertagihTotal').textContent = fmtRp(totalBelumTertagih);
 }
 
 /* ===================== Component cost ===================== */
@@ -540,6 +554,7 @@ function applyTableFilters() {
       <td>${fmtRp(p.nilaiKontrak)}</td>
       <td>${fmtRp(p.modalKerja)}</td>
       <td>${fmtRp(p.keuntunganNet)}</td>
+      <td title="PPh: ${fmtRp(p.pphPerusahaan)} | PPN: ${fmtRp(p.ppnPerusahaan)}">${p.pajakPerusahaan ? fmtRp(p.pajakPerusahaan) : '—'}</td>
       <td class="wrap">${esc(p.investor)}</td>
       <td>${p.penawaranFile && p.penawaranFile.url
         ? `<a href="${esc(p.penawaranFile.url)}" target="_blank" rel="noopener" class="icon-btn" title="Buka ${esc(p.penawaranFile.label || 'Surat Penawaran')}">🔗</a>`
@@ -548,7 +563,7 @@ function applyTableFilters() {
         <button class="icon-btn" data-edit="${p.id}" title="Ubah">✎</button>
         <button class="icon-btn danger" data-del="${p.id}" title="Hapus">🗑</button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
 
   qsa('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openForm(btn.dataset.edit)));
   qsa('[data-del]').forEach((btn) => btn.addEventListener('click', () => handleDelete(btn.dataset.del)));
@@ -650,6 +665,8 @@ function openForm(id) {
     qs('#f_investor').value = p.investor || '';
     qs('#f_jenisPekerjaan').value = p.jenisPekerjaan || '';
     qs('#f_feeCB').value = p.feeCB || 0;
+    qs('#f_pphPerusahaan').value = p.pphPerusahaan || 0;
+    qs('#f_ppnPerusahaan').value = p.ppnPerusahaan || 0;
     qs('#f_biayaPersonil').value = p.biayaPersonil || '';
     qs('#f_biayaDokumen').value = p.biayaDokumen || '';
     qs('#f_biayaOperasional').value = p.biayaOperasional || '';
@@ -665,6 +682,8 @@ function openForm(id) {
   } else {
     qs('#formTitle').textContent = 'Tambah Proyek Baru';
     qs('#f_feeCB').value = 0;
+    qs('#f_pphPerusahaan').value = 0;
+    qs('#f_ppnPerusahaan').value = 0;
     qs('#formDeleteBtn').style.display = 'none';
     qs('#penawaranEmptyNote').style.display = 'block';
     qs('#penawaranManager').style.display = 'none';
@@ -747,6 +766,8 @@ function readFormValues() {
     investor: qs('#f_investor').value,
     jenisPekerjaan: qs('#f_jenisPekerjaan').value,
     feeCB: qs('#f_feeCB').value || 0,
+    pphPerusahaan: qs('#f_pphPerusahaan').value || 0,
+    ppnPerusahaan: qs('#f_ppnPerusahaan').value || 0,
     biayaPersonil: qs('#f_biayaPersonil').value || 0,
     biayaDokumen: qs('#f_biayaDokumen').value || 0,
     biayaOperasional: qs('#f_biayaOperasional').value || 0,
@@ -769,6 +790,8 @@ function updateLivePreview() {
   qs('#previewBagiHasil').textContent = fmtRp(computed.bagiHasil30);
   qs('#previewPPh').textContent = fmtRp(computed.pphFinal);
   qs('#previewNet').textContent = fmtRp(computed.keuntunganNet);
+  qs('#previewPajakPerusahaan').textContent = fmtRp(computed.pajakPerusahaan);
+  qs('#previewNetFinal').textContent = fmtRp(computed.keuntunganNetSetelahPajakPerusahaan);
   const hasilEl = qs('#previewHasil');
   hasilEl.textContent = computed.hasilKelayakan;
   hasilEl.className = computed.hasilKelayakan === 'Layak' ? 'badge ok' : 'badge warn';
@@ -862,6 +885,118 @@ function populateSettingsForm() {
   qs('#s_bagiHasilRate').value = (SETTINGS.bagiHasilRate * 100).toFixed(2);
   qs('#s_pphFinalRate').value = (SETTINGS.pphFinalRate * 100).toFixed(2);
   qs('#s_layakMinMargin').value = (SETTINGS.layakMinMargin * 100).toFixed(2);
+}
+
+/* ===================== Backup Excel ===================== */
+/** Ekspor seluruh data yang sedang termuat (proyek + hasil hitung + rekap) ke satu file
+ *  .xlsx multi-sheet — jaga-jaga kalau platform bermasalah (crash/bug), jaringan mati,
+ *  atau listrik padam. Berjalan dari data yang sudah ada di memori (COMPUTED), jadi tetap
+ *  bisa dipakai selama halaman sudah pernah dimuat sebelumnya, walau sedang offline. */
+function wireBackupExport() {
+  const btn = qs('#backupBtn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (typeof XLSX === 'undefined') {
+      toast('Modul Excel belum termuat (perlu koneksi internet minimal sekali). Coba lagi.', 'error');
+      return;
+    }
+    try {
+      exportBackupToExcel();
+      toast('Backup Excel berhasil diunduh.', 'success');
+    } catch (err) {
+      toast('Gagal membuat file backup: ' + err.message, 'error');
+    }
+  });
+}
+
+function exportBackupToExcel() {
+  const wb = XLSX.utils.book_new();
+
+  const proyekRows = COMPUTED.map((p) => ({
+    'Tgl PO': fmtDate(p.tanggalPO),
+    'No PO': p.noPO || '',
+    'Perusahaan': p.perusahaan || '',
+    'Jenis Pekerjaan': p.jenisPekerjaan || '',
+    'Investor': p.investor || '',
+    'Tgl Transfer': fmtDate(p.tanggalTransfer),
+    'Nilai Kontrak': p.nilaiKontrak || 0,
+    'Modal Kerja': p.modalKerja || 0,
+    'Keuntungan Bersih': p.keuntunganBersih || 0,
+    'Bagi Hasil 30%': p.bagiHasil30 || 0,
+    'Total Kembali ke Investor': p.totalPengembalian || 0,
+    'PPh Final (Dacin)': p.pphFinal || 0,
+    'Fee CB': p.feeCB || 0,
+    'Keuntungan Net': p.keuntunganNet || 0,
+    'PPh Dibebankan Perusahaan': p.pphPerusahaan || 0,
+    'PPN Dibebankan Perusahaan': p.ppnPerusahaan || 0,
+    'Net Setelah Pajak Perusahaan': p.keuntunganNetSetelahPajakPerusahaan || 0,
+    'Margin': p.margin ? (p.margin * 100).toFixed(1) + '%' : '0%',
+    'Status Kelayakan': p.hasilKelayakan || '',
+    'Pengerjaan': p.progress?.pengerjaan ? 'Ya' : 'Belum',
+    'Submit Dokumen': p.progress?.submitDokumen ? 'Ya' : 'Belum',
+    'Penagihan': p.progress?.penagihan ? 'Sudah Ditagih' : 'Belum Tertagih',
+    'Pembayaran (Lunas)': p.progress?.pembayaran ? 'Lunas' : 'Belum',
+    'Status Progres Dana': p.tanggalTransfer ? C.computeProgressStatus(p).label : '',
+    'Keterangan': p.keterangan || '',
+    'Kendala': p.kendala || '',
+    'Link Surat Penawaran': (p.penawaranFile && p.penawaranFile.url) || '',
+  }));
+  const wsProyek = XLSX.utils.json_to_sheet(proyekRows);
+  XLSX.utils.book_append_sheet(wb, wsProyek, 'Proyek');
+
+  const investorRows = C.groupByInvestor(COMPUTED).map((inv) => ({
+    'Investor': inv.investor,
+    'Omset': inv.omset,
+    'Modal Kerja': inv.modalKerja,
+    'Bagi Hasil 30%': inv.bagiHasil,
+    'Jumlah Proyek': inv.jumlahProyek,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(investorRows), 'Investor');
+
+  const belumTertagih = COMPUTED.filter((p) => p.tanggalTransfer && !(p.progress || {}).penagihan);
+  const progresRows = COMPUTED.filter((p) => p.tanggalTransfer).map((p) => ({
+    'Perusahaan': p.perusahaan || '',
+    'Investor': p.investor || '',
+    'Tgl Transfer': fmtDate(p.tanggalTransfer),
+    'Modal Kerja': p.modalKerja || 0,
+    'Nilai Kontrak': p.nilaiKontrak || 0,
+    'Keuntungan Bersih': p.keuntunganBersih || 0,
+    'Bagi Hasil 30%': p.bagiHasil30 || 0,
+    'Total Kembali ke Investor': p.totalPengembalian || 0,
+    'Status': C.computeProgressStatus(p).label,
+    'Status Tagihan': (p.progress || {}).penagihan ? 'Sudah Ditagih' : 'Belum Tertagih',
+    'Keterangan': p.keterangan || '',
+    'Kendala': p.kendala || '',
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(progresRows), 'Progres Dana');
+
+  const ringkasanTagihan = [{
+    'Jumlah Proyek Belum Tertagih': belumTertagih.length,
+    'Akumulasi Nilai Belum Tertagih': belumTertagih.reduce((a, p) => a + (p.nilaiKontrak || 0), 0),
+  }];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ringkasanTagihan), 'Ringkasan Tagihan');
+
+  const monthlyRows = C.groupByMonth(COMPUTED).map((m) => ({
+    'Bulan': m.bulan,
+    'Omset': m.omset,
+    'Modal Kerja': m.modal,
+    'Laba Kotor': m.labaKotor,
+    'Margin': (m.margin * 100).toFixed(1) + '%',
+    'Jumlah Proyek': m.jumlahProyek,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(monthlyRows), 'Omset Bulanan');
+
+  const clientRows = C.groupByClient(COMPUTED).map((c) => ({
+    'Klien': c.klien,
+    'Omset': c.omset,
+    'Jumlah Proyek': c.jumlahProyek,
+    'Kontribusi': (c.kontribusi * 100).toFixed(1) + '%',
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientRows), 'Omset per Klien');
+
+  const today = new Date();
+  const stamp = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+  XLSX.writeFile(wb, `Dacin-Mas-Backup-${stamp}.xlsx`);
 }
 
 /* ===================== Install prompt (Android/desktop + iOS) ===================== */

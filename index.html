@@ -54,6 +54,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v13m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
         <span class="upload-label">Instal</span>
       </button>
+      <button class="btn" id="backupBtn" title="Unduh backup seluruh data (Excel) — untuk jaga-jaga jika ada masalah teknis, jaringan, atau listrik">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span class="upload-label">Backup</span>
+      </button>
       <button class="btn" id="settingsBtn" title="Pengaturan target &amp; pajak">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </button>
@@ -186,6 +190,7 @@
           <th data-sort="nilaiKontrak">Nilai Kontrak <span class="arrow"></span></th>
           <th data-sort="modalKerja">Modal Kerja <span class="arrow"></span></th>
           <th data-sort="keuntunganNet">Untung Net <span class="arrow"></span></th>
+          <th data-sort="pajakPerusahaan">Pajak Perusahaan <span class="arrow"></span></th>
           <th data-sort="investor">Investor <span class="arrow"></span></th>
           <th>Penawaran</th>
           <th>Aksi</th>
@@ -209,9 +214,31 @@
       <span><i class="info"></i>Lunas - Dana Kembali ke Investor</span>
       <span><i class="neutral"></i>Belum Ada Dana</span>
     </div>
+    <div class="panel panel-pad" id="belumTertagihCard" style="margin-bottom:14px">
+      <div class="irow"><span>Proyek Belum Tertagih</span><b id="belumTertagihCount">0</b></div>
+      <div class="irow"><span>Akumulasi Nilai Belum Tertagih</span><b id="belumTertagihTotal">Rp 0</b></div>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Perusahaan</th><th>Investor</th><th>Tgl Transfer</th><th>Total Kembali</th><th>Status</th><th>Keterangan</th><th>Kendala</th></tr></thead>
+        <thead>
+          <tr>
+            <th rowspan="2">Perusahaan</th>
+            <th rowspan="2">Investor</th>
+            <th rowspan="2">Tgl Transfer</th>
+            <th colspan="5" class="th-banner">DATA KEUANGAN PROYEK</th>
+            <th rowspan="2">Status</th>
+            <th rowspan="2">Status Tagihan</th>
+            <th rowspan="2">Keterangan</th>
+            <th rowspan="2">Kendala</th>
+          </tr>
+          <tr>
+            <th>Modal Kerja</th>
+            <th>Nilai Kontrak</th>
+            <th>Keuntungan Bersih</th>
+            <th>Bagi Hasil 30%</th>
+            <th>Total Kembali ke Investor</th>
+          </tr>
+        </thead>
         <tbody id="progressBody"></tbody>
       </table>
     </div>
@@ -278,6 +305,15 @@
           </div>
         </details>
 
+        <details class="detail-block">
+          <summary>Pajak Dibebankan Perusahaan (opsional)</summary>
+          <p class="section-note" style="margin-top:10px">Beberapa perusahaan klien memotong/menambahkan PPh &amp; PPN sendiri saat membayar ke Dacin. Beda-beda tiap proyek — isi manual sesuai bukti potong/invoice, kosongkan jika tidak ada.</p>
+          <div class="form-grid" style="margin-top:12px">
+            <label>PPh Dibebankan Perusahaan (Rp)<input type="number" id="f_pphPerusahaan" min="0" step="1"><span class="field-error" id="err_pphPerusahaan"></span></label>
+            <label>PPN Dibebankan Perusahaan (Rp)<input type="number" id="f_ppnPerusahaan" min="0" step="1"><span class="field-error" id="err_ppnPerusahaan"></span></label>
+          </div>
+        </details>
+
         <details class="detail-block" id="penawaranBlock">
           <summary>Surat Penawaran (opsional)</summary>
           <p class="section-note" id="penawaranEmptyNote" style="margin-top:10px">Simpan proyek ini dulu (klik Simpan), lalu buka lagi untuk menambahkan link surat penawaran.</p>
@@ -313,6 +349,8 @@
             <div><span>Bagi Hasil 30%</span><b id="previewBagiHasil">—</b></div>
             <div><span>PPh Final 0,5%</span><b id="previewPPh">—</b></div>
             <div><span>Keuntungan Net</span><b id="previewNet">—</b></div>
+            <div><span>Pajak Perusahaan (PPh+PPN)</span><b id="previewPajakPerusahaan">—</b></div>
+            <div><span>Net Setelah Pajak Perusahaan</span><b id="previewNetFinal">—</b></div>
             <div><span>Status Kelayakan</span><b><span class="badge" id="previewHasil">—</span></b></div>
           </div>
         </div>
@@ -375,6 +413,7 @@
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module" src="./app.js"></script>
 </body>
 </html>

@@ -12,6 +12,7 @@
   --warn:#D9A441;
   --danger:#C25450;
   --info:#5A96DC;
+  --overdue:#8B6FCB;
   --ink:#ECE7DD;
   --ink-dim:#9AA3A8;
   --ink-faint:#6B747A;
@@ -174,6 +175,11 @@ thead th{
 }
 thead th:hover{color:var(--ink)}
 thead th .arrow{opacity:.5; margin-left:4px}
+thead th.th-banner{
+  background:rgba(90,150,220,.18); color:var(--info); text-align:center;
+  font-size:11px; letter-spacing:.8px; cursor:default;
+}
+thead th.th-banner:hover{color:var(--info)}
 tbody td{padding:10px 12px; border-bottom:1px solid var(--line); font-family:var(--font-mono); white-space:nowrap}
 tbody td.wrap{white-space:normal; font-family:var(--font-body)}
 tbody tr:hover{background:rgba(198,154,82,.05)}
@@ -183,6 +189,7 @@ tbody tr:last-child td{border-bottom:none}
 .badge.warn{background:rgba(217,164,65,.15); color:var(--warn)}
 .badge.info{background:rgba(90,150,220,.15); color:var(--info)}
 .badge.neutral{background:rgba(154,163,168,.12); color:var(--ink-faint)}
+.badge.overdue{background:rgba(139,111,203,.18); color:var(--overdue)}
 
 .status-legend{display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 4px; font-size:11.5px; color:var(--ink-dim)}
 .status-legend span{display:inline-flex; align-items:center; gap:6px}
@@ -192,6 +199,7 @@ tbody tr:last-child td{border-bottom:none}
 .status-legend .danger{background:var(--danger)}
 .status-legend .info{background:var(--info)}
 .status-legend .neutral{background:var(--ink-faint)}
+.status-legend .overdue{background:var(--overdue)}
 
 .search-bar{display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap}
 .search-bar input, .search-bar select{
@@ -206,6 +214,9 @@ tbody tr:last-child td{border-bottom:none}
 .investor-card .iname{font-family:var(--font-display); font-weight:600; font-size:15px}
 .investor-card .irow{display:flex; justify-content:space-between; font-size:12px; margin-top:8px; color:var(--ink-dim)}
 .investor-card .irow b{font-family:var(--font-mono); color:var(--ink); font-weight:500}
+#belumTertagihCard .irow{display:flex; justify-content:space-between; font-size:13px; margin-top:6px; color:var(--ink-dim)}
+#belumTertagihCard .irow:first-child{margin-top:0}
+#belumTertagihCard .irow b{font-family:var(--font-mono); color:var(--danger,#D9534F); font-weight:600; font-size:14px}
 
 /* ===== Footer ===== */
 footer{max-width:1180px; margin:0 auto; padding:30px 20px 40px; color:var(--ink-faint); font-size:11.5px; text-align:center; font-family:var(--font-mono)}
