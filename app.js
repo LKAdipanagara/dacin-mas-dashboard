@@ -43,6 +43,24 @@ let TABLE_SORT = { key: 'tanggalTransfer', dir: 'desc' };
 let EDITING_ID = null; // null = mode tambah baru
 let unsubProjects = null, unsubSettings = null;
 let FORECAST_DIRTY = new Set(); // field biaya yang sudah diubah manual - jangan ditimpa forecast
+let IS_VIEWER = false; // true = mode Investor/Stakeholder (lihat saja, tanpa login) - lihat wireInstall di bawah untuk deteksi ?viewer=1
+
+/** Blokir aksi tulis di sisi tampilan untuk mode Investor (lihat saja). Ini cuma
+ *  lapisan kenyamanan UI - pengaman sesungguhnya ada di firestore.rules (koleksi admins/),
+ *  supaya walau seseorang mengakali tampilan, Firestore tetap menolak tulisannya. */
+function blockIfViewer() {
+  if (!IS_VIEWER) return false;
+  toast('Mode Investor: lihat saja, tidak bisa mengedit.', 'error');
+  return true;
+}
+
+/** Sembunyikan tombol/aksi tulis untuk mode Investor. Sudah dibantu CSS (.viewer-mode),
+ *  fungsi ini untuk elemen yang butuh disentuh lewat JS juga. */
+function applyViewerRestrictions() {
+  if (!IS_VIEWER) return;
+  const del = qs('#formDeleteBtn');
+  if (del) del.style.display = 'none';
+}
 
 const KNOWN_INVESTORS = ['Vares', 'Kang Fajar', 'Kas Dacin', 'Gana'];
 const KNOWN_JOBS = ['Kalibrasi Timbangan', 'Kalibrasi Tangki', 'Kalibrasi Flowmeter', 'Kalibrasi Suhu', 'Kalibrasi Pressure', 'Kalibrasi Vacum Gauge', 'Check Weigher', 'Repair Timbangan', 'Pengadaan Barang', 'Training', 'Subkon', 'Kalibrasi Batching Plant', 'Kalibrasi Anak Timbangan'];
@@ -56,6 +74,20 @@ async function boot() {
   }
   wireLoginForm();
   wireInstall();
+
+  // Link ?viewer=1 = mode Investor/Stakeholder: masuk otomatis sebagai tamu (anonim),
+  // tanpa perlu email/password. Kalau provider Anonymous belum diaktifkan di Firebase
+  // Console, tampilkan pesan yang jelas alih-alih macet di layar kosong.
+  const isViewerLink = new URLSearchParams(location.search).get('viewer') === '1';
+  if (isViewerLink) {
+    try {
+      await DB.loginAnonymous();
+    } catch (err) {
+      showConfigError('Mode Investor (lihat saja) belum aktif. Admin Dacin Mas perlu mengaktifkan provider "Anonymous" di Firebase Console > Authentication > Sign-in method. (' + err.message + ')');
+      return;
+    }
+  }
+
   DB.watchAuth((user) => {
     if (user) {
       showApp(user);
@@ -70,6 +102,21 @@ async function boot() {
     // dalam sw.js tidak pernah terdeteksi — inilah sumber "belum ada perubahan"
     // yang berulang kali muncul walau file sudah ter-upload & Vercel sudah deploy.
     navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
+
+    // Bagian KEDUA dari fix ini: walau Service Worker baru terdeteksi & ter-install,
+    // ia baru benar-benar "mengambil alih" kontrol setelah event ini menyala - dan
+    // halaman yang SEDANG terbuka saat itu tetap dilayani oleh SW versi LAMA untuk
+    // semua file (app.js, style.css, dst) sampai di-reload ulang. Tanpa baris ini,
+    // pemuatan pertama setelah ada update bisa diam-diam memakai app.js versi lama
+    // (HTML-nya sudah baru, tapi skrip di dalamnya masih lama) - reload sekali otomatis
+    // di sini memastikan device selalu langsung dapat versi terbaru tanpa perlu
+    // trik manual (Incognito / hapus cache) tiap kali ada update baru.
+    let swReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (swReloaded) return;
+      swReloaded = true;
+      window.location.reload();
+    });
   }
   window.addEventListener('online', updateOnlineBadge);
   window.addEventListener('offline', updateOnlineBadge);
@@ -109,7 +156,9 @@ function showApp(user) {
   qs('#loginScreen').style.display = 'none';
   qs('#appRoot').style.display = 'block';
   qs('#configError').style.display = 'none';
-  qs('#userEmail').textContent = user.email || '';
+  IS_VIEWER = !!user.isAnonymous;
+  qs('#userEmail').textContent = IS_VIEWER ? 'Mode Investor — Lihat Saja' : (user.email || '');
+  qs('#appRoot').classList.toggle('viewer-mode', IS_VIEWER);
 
   wireTabs();
   wireTableControls();
@@ -118,6 +167,7 @@ function showApp(user) {
   wireLogout();
   wireSettingsForm();
   wireBackupExport();
+  applyViewerRestrictions();
 
   unsubSettings = DB.watchSettings((s) => {
     SETTINGS = { ...C.DEFAULT_SETTINGS, ...(s || {}) };
@@ -214,6 +264,7 @@ function recomputeAndRenderAll() {
 /* ===================== Seed import banner ===================== */
 function wireSeedBanner() {
   qs('#seedImportBtn').addEventListener('click', async () => {
+    if (blockIfViewer()) return;
     if (!confirm('Impor 30 data proyek awal dari file Excel? Hanya lakukan ini SEKALI saat data masih kosong.')) return;
     const btn = qs('#seedImportBtn');
     btn.disabled = true;
@@ -586,6 +637,7 @@ function wireTableControls() {
 }
 
 async function handleDelete(id) {
+  if (blockIfViewer()) return;
   const p = RAW_PROJECTS.find((x) => x.id === id);
   const name = p ? p.perusahaan + ' (' + p.noPO + ')' : id;
   if (!confirm('Hapus proyek "' + name + '"? Tindakan ini tidak bisa dibatalkan.')) return;
@@ -645,6 +697,7 @@ function applyForecast() {
 }
 
 function openForm(id) {
+  if (blockIfViewer()) return;
   EDITING_ID = id;
   const form = qs('#projectForm');
   form.reset();
@@ -815,6 +868,7 @@ function updateLivePreview() {
 
 async function handleFormSubmit(e) {
   e.preventDefault();
+  if (blockIfViewer()) return;
   const values = readFormValues();
   const { valid, errors } = C.validateProject(values);
   if (!valid) {
@@ -857,6 +911,7 @@ function wireSettingsForm() {
   qs('#settingsOverlay').addEventListener('click', (e) => { if (e.target.id === 'settingsOverlay') qs('#settingsOverlay').style.display = 'none'; });
   qs('#settingsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (blockIfViewer()) return;
     const newSettings = {
       targetT1: Number(qs('#s_targetT1').value) || C.DEFAULT_SETTINGS.targetT1,
       targetT2: Number(qs('#s_targetT2').value) || C.DEFAULT_SETTINGS.targetT2,

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dacin-mas-crud-v11';
+const CACHE_NAME = 'dacin-mas-crud-v13';
 const APP_SHELL = [
   './',
   './index.html',
