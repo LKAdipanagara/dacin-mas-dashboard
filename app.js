@@ -457,8 +457,8 @@ function renderInvestors(list) {
   qs('#progressBody').innerHTML = rows.map((p) => {
     const sudahTagih = !!(p.progress || {}).penagihan;
     return `
-    <tr>
-      <td class="wrap">${esc(p.perusahaan)}</td>
+    <tr class="${p.feeCB > 0 ? 'row-cashback' : ''}" title="${p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : ''}">
+      <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}</td>
       <td class="wrap">${esc(p.investor)}</td>
       <td>${fmtDate(p.tanggalTransfer)}</td>
       <td>${fmtRp(p.modalKerja)}</td>
@@ -547,9 +547,9 @@ function applyTableFilters() {
   });
   qs('#tableCount').textContent = rows.length + ' proyek';
   qs('#projectsBody').innerHTML = rows.map((p) => `
-    <tr>
+    <tr class="${p.feeCB > 0 ? 'row-cashback' : ''}" title="${p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : ''}">
       <td>${fmtDate(p.tanggalTransfer)}</td>
-      <td class="wrap">${esc(p.perusahaan)}</td>
+      <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}</td>
       <td class="wrap">${esc(p.jenisPekerjaan)}</td>
       <td>${fmtRp(p.nilaiKontrak)}</td>
       <td>${fmtRp(p.modalKerja)}</td>
