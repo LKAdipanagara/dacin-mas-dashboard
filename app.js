@@ -510,12 +510,19 @@ function renderInvestors(list) {
 
   populateInvestorFilterOptions();
   const investorFilter = qs('#filterInvestorProgress').value;
-  const rows = COMPUTED.filter((p) => p.tanggalTransfer && (!investorFilter || p.investor === investorFilter)).map((p) => {
+  const statusFilterLabels = {
+    ok: '🟢 Dana Baru Masuk', warn: '🟡 Dalam Pengerjaan', danger: '🔴 Perlu Percepatan',
+    overdue: '🟣 Sudah Jatuh Tempo', critical: '⚫ Bermasalah (>4 Bulan)', info: '🔵 Lunas', neutral: '⚪ Belum Ada Dana',
+  };
+  const statusFilter = qs('#filterStatusProgress').value;
+  let rows = COMPUTED.filter((p) => p.tanggalTransfer && (!investorFilter || p.investor === investorFilter)).map((p) => {
     const status = C.computeProgressStatus(p);
     const sudahTagih = !!(p.progress || {}).penagihan;
     return { ...p, status, statusRank: STATUS_RANK[status.level] ?? 0, tagihanRank: sudahTagih ? 1 : 0 };
   });
-  qs('#totalsRowLabel').textContent = investorFilter ? `TOTAL — ${investorFilter}` : 'TOTAL KESELURUHAN';
+  if (statusFilter) rows = rows.filter((p) => p.status.level === statusFilter);
+  const totalLabelParts = [investorFilter, statusFilter ? statusFilterLabels[statusFilter] : ''].filter(Boolean);
+  qs('#totalsRowLabel').textContent = totalLabelParts.length ? `TOTAL — ${totalLabelParts.join(' · ')}` : 'TOTAL KESELURUHAN';
   rows.sort((a, b) => {
     let va = a[INVESTOR_SORT.key], vb = b[INVESTOR_SORT.key];
     if (INVESTOR_SORT.key === 'tanggalTransfer') { va = C.toDate(va)?.getTime() || 0; vb = C.toDate(vb)?.getTime() || 0; }
@@ -725,6 +732,7 @@ function wireInvestorTableSort() {
     });
   });
   qs('#filterInvestorProgress').addEventListener('change', () => renderInvestors(C.groupByInvestor(COMPUTED)));
+  qs('#filterStatusProgress').addEventListener('change', () => renderInvestors(C.groupByInvestor(COMPUTED)));
 }
 
 async function handleDelete(id) {

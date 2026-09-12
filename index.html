@@ -227,10 +227,26 @@
       <div class="irow"><span>Proyek Belum Tertagih</span><b id="belumTertagihCount">0</b></div>
       <div class="irow"><span>Akumulasi Nilai Belum Tertagih</span><b id="belumTertagihTotal">Rp 0</b></div>
     </div>
-    <p class="section-note">Klik judul kolom untuk mengurutkan (sama seperti tabel di tab Proyek). Baris TOTAL di bawah tabel menyesuaikan filter investor.</p>
-    <div class="search-bar">
-      <select id="filterInvestorProgress"></select>
+    <div class="filter-toolbar">
+      <div class="filter-field">
+        <label for="filterInvestorProgress">Investor</label>
+        <select id="filterInvestorProgress"></select>
+      </div>
+      <div class="filter-field">
+        <label for="filterStatusProgress">Status Progres Pekerjaan</label>
+        <select id="filterStatusProgress">
+          <option value="">Semua Status</option>
+          <option value="ok">🟢 Dana Baru Masuk</option>
+          <option value="warn">🟡 Dalam Pengerjaan</option>
+          <option value="danger">🔴 Perlu Percepatan</option>
+          <option value="overdue">🟣 Sudah Jatuh Tempo</option>
+          <option value="critical">⚫ Bermasalah (&gt;4 Bulan)</option>
+          <option value="info">🔵 Lunas</option>
+          <option value="neutral">⚪ Belum Ada Dana</option>
+        </select>
+      </div>
     </div>
+    <p class="section-note" style="margin-bottom:10px">Klik judul kolom untuk mengurutkan (sama seperti tabel di tab Proyek). Baris TOTAL di bawah tabel menyesuaikan filter yang dipilih.</p>
     <div class="table-wrap">
       <table>
         <thead>
@@ -239,7 +255,7 @@
             <th rowspan="2" data-isort="investor">Investor <span class="arrow"></span></th>
             <th rowspan="2" data-isort="tanggalTransfer">Tgl Transfer <span class="arrow">↓</span></th>
             <th colspan="5" class="th-banner">DATA KEUANGAN PROYEK</th>
-            <th rowspan="2" data-isort="statusRank">Status <span class="arrow"></span></th>
+            <th rowspan="2" data-isort="statusRank">Status Progres Pekerjaan <span class="arrow"></span></th>
             <th rowspan="2" data-isort="tagihanRank">Status Tagihan <span class="arrow"></span></th>
             <th rowspan="2" data-isort="keterangan">Keterangan <span class="arrow"></span></th>
             <th rowspan="2" data-isort="kendala">Kendala <span class="arrow"></span></th>

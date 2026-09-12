@@ -260,6 +260,21 @@ tfoot .status-summary-row td{
 }
 .search-bar input{flex:1; min-width:180px}
 
+/* Toolbar filter dengan label di atas tiap dropdown (tab Investor) - dipisah
+   dari .search-bar dan diberi margin sendiri supaya tidak "menumpuk" dengan
+   panel/teks di atasnya. */
+.filter-toolbar{display:flex; gap:18px; flex-wrap:wrap; margin:18px 0 12px}
+.filter-field{display:flex; flex-direction:column; gap:5px}
+.filter-field label{
+  font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint);
+  text-transform:uppercase; letter-spacing:.5px;
+}
+.filter-field select{
+  background:var(--panel-2); border:1px solid var(--line); color:var(--ink);
+  padding:9px 12px; border-radius:9px; font-family:var(--font-body); font-size:13px;
+  min-width:220px;
+}
+
 /* ===== Investor cards ===== */
 .investor-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px}
 .investor-card{padding:16px}
