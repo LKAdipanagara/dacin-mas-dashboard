@@ -508,11 +508,14 @@ function renderInvestors(list) {
       <div class="irow"><span>Jumlah Proyek</span><b>${inv.jumlahProyek}</b></div>
     </div>`).join('') || '<p class="section-note">Belum ada data.</p>';
 
-  const rows = COMPUTED.filter((p) => p.tanggalTransfer).map((p) => {
+  populateInvestorFilterOptions();
+  const investorFilter = qs('#filterInvestorProgress').value;
+  const rows = COMPUTED.filter((p) => p.tanggalTransfer && (!investorFilter || p.investor === investorFilter)).map((p) => {
     const status = C.computeProgressStatus(p);
     const sudahTagih = !!(p.progress || {}).penagihan;
     return { ...p, status, statusRank: STATUS_RANK[status.level] ?? 0, tagihanRank: sudahTagih ? 1 : 0 };
   });
+  qs('#totalsRowLabel').textContent = investorFilter ? `TOTAL — ${investorFilter}` : 'TOTAL KESELURUHAN';
   rows.sort((a, b) => {
     let va = a[INVESTOR_SORT.key], vb = b[INVESTOR_SORT.key];
     if (INVESTOR_SORT.key === 'tanggalTransfer') { va = C.toDate(va)?.getTime() || 0; vb = C.toDate(vb)?.getTime() || 0; }
@@ -572,7 +575,7 @@ function renderInvestors(list) {
   qs('#belumTertagihCount').textContent = belumTertagih.length;
   qs('#belumTertagihTotal').textContent = fmtRp(totalBelumTertagih);
 
-  const bermasalah = C.computeBermasalahByClient(COMPUTED);
+  const bermasalah = C.computeBermasalahByClient(rows);
   qs('#bermasalahCount').textContent = bermasalah.reduce((a, e) => a + e.jumlahProyek, 0);
   qs('#bermasalahTotal').textContent = fmtRp(bermasalah.reduce((a, e) => a + e.totalNilaiKontrak, 0));
   qs('#bermasalahList').innerHTML = bermasalah.length
@@ -625,6 +628,18 @@ function renderComponentCost(avg) {
 /* ===================== Projects table ===================== */
 function populateFilterOptions() {
   const sel = qs('#filterInvestor');
+  const current = sel.value;
+  const investors = Array.from(new Set(RAW_PROJECTS.map((p) => p.investor).filter(Boolean))).sort();
+  sel.innerHTML = '<option value="">Semua Investor</option>' + investors.map((i) => `<option value="${esc(i)}">${esc(i)}</option>`).join('');
+  sel.value = current || '';
+}
+
+/* Dropdown filter investor khusus tabel Progres Dana di tab Investor - terpisah
+   dari #filterInvestor milik tab Proyek supaya filter di satu tab tidak
+   memengaruhi tab lainnya. Baris TOTAL KESELURUHAN & rekap status di footer
+   tabel otomatis menyesuaikan pilihan filter ini. */
+function populateInvestorFilterOptions() {
+  const sel = qs('#filterInvestorProgress');
   const current = sel.value;
   const investors = Array.from(new Set(RAW_PROJECTS.map((p) => p.investor).filter(Boolean))).sort();
   sel.innerHTML = '<option value="">Semua Investor</option>' + investors.map((i) => `<option value="${esc(i)}">${esc(i)}</option>`).join('');
@@ -709,6 +724,7 @@ function wireInvestorTableSort() {
       renderInvestors(C.groupByInvestor(COMPUTED));
     });
   });
+  qs('#filterInvestorProgress').addEventListener('change', () => renderInvestors(C.groupByInvestor(COMPUTED)));
 }
 
 async function handleDelete(id) {

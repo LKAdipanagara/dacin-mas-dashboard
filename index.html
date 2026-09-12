@@ -227,7 +227,10 @@
       <div class="irow"><span>Proyek Belum Tertagih</span><b id="belumTertagihCount">0</b></div>
       <div class="irow"><span>Akumulasi Nilai Belum Tertagih</span><b id="belumTertagihTotal">Rp 0</b></div>
     </div>
-    <p class="section-note">Klik judul kolom untuk mengurutkan (sama seperti tabel di tab Proyek).</p>
+    <p class="section-note">Klik judul kolom untuk mengurutkan (sama seperti tabel di tab Proyek). Baris TOTAL di bawah tabel menyesuaikan filter investor.</p>
+    <div class="search-bar">
+      <select id="filterInvestorProgress"></select>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -252,7 +255,7 @@
         <tbody id="progressBody"></tbody>
         <tfoot>
           <tr class="totals-row">
-            <td colspan="3">TOTAL KESELURUHAN</td>
+            <td colspan="3" id="totalsRowLabel">TOTAL KESELURUHAN</td>
             <td id="totalModalKerja">Rp 0</td>
             <td id="totalNilaiKontrak">Rp 0</td>
             <td id="totalKeuntunganBersih">Rp 0</td>
