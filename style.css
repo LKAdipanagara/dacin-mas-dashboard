@@ -203,16 +203,21 @@ tbody tr.row-critical:hover{background:rgba(255,76,76,.18)}
 .badge.critical{background:rgba(255,76,76,.22); color:#fff; border:1px solid var(--critical); font-weight:600}
 .badge.cashback{background:rgba(79,184,196,.18); color:var(--cashback)}
 
-/* Tabel ringkas (tab Investor) — kolom lebih sedikit + angka format singkat,
-   supaya muat di lebar layar laptop tanpa perlu geser ke kanan. */
-table.table-compact{min-width:0; width:100%; table-layout:auto}
-table.table-compact td, table.table-compact th{padding:9px 10px}
-.sub-label{font-size:10.5px; color:var(--ink-faint); margin-top:2px; font-family:var(--font-mono)}
-.td-truncate{max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap !important}
-.count-pill{
-  display:inline-block; min-width:16px; padding:0 5px; border-radius:999px; text-align:center;
-  background:var(--panel-3); color:var(--ink); font-family:var(--font-mono); font-size:10px; font-weight:600;
+/* Baris total & ringkasan status di footer tabel Investor (meniru baris
+   TOTAL KESELURUHAN + rekap jumlah per status di file Excel). */
+tfoot .totals-row td{
+  background:var(--panel-3); color:var(--ink); font-weight:700;
+  font-family:var(--font-mono); border-top:2px solid var(--line); border-bottom:none;
 }
+tfoot .status-summary-row td{
+  background:var(--panel-2); border-bottom:none; padding:10px 12px;
+  white-space:normal;
+}
+.status-count-item{
+  display:inline-flex; align-items:center; gap:4px; margin:2px 14px 2px 0;
+  font-size:11.5px; color:var(--ink-dim); font-family:var(--font-body);
+}
+.status-count-item b{color:var(--ink); font-family:var(--font-mono)}
 
 /* ===== Mode Investor / Stakeholder (lihat saja, link ?viewer=1) ===== */
 .viewer-mode #addProjectBtn,

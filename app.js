@@ -41,9 +41,9 @@ let COMPUTED = [];
 let CHARTS = {};
 let TABLE_SORT = { key: 'tanggalTransfer', dir: 'desc' };
 // Urutan prioritas status dana investor — dipakai untuk sort kolom "Status" di
-// tab Investor (default: yang paling bermasalah/urgent tampil paling atas).
+// tab Investor (angka lebih besar = lebih urgent/bermasalah).
 const STATUS_RANK = { critical: 6, overdue: 5, danger: 4, warn: 3, ok: 2, neutral: 1, info: 0 };
-let PROGRESS_SORT = { key: 'statusRank', dir: 'desc' };
+let INVESTOR_SORT = { key: 'tanggalTransfer', dir: 'desc' };
 let EDITING_ID = null; // null = mode tambah baru
 let unsubProjects = null, unsubSettings = null;
 let FORECAST_DIRTY = new Set(); // field biaya yang sudah diubah manual - jangan ditimpa forecast
@@ -166,6 +166,7 @@ function showApp(user) {
 
   wireTabs();
   wireTableControls();
+  wireInvestorTableSort();
   wireForm();
   wireSeedBanner();
   wireLogout();
@@ -507,17 +508,19 @@ function renderInvestors(list) {
       <div class="irow"><span>Jumlah Proyek</span><b>${inv.jumlahProyek}</b></div>
     </div>`).join('') || '<p class="section-note">Belum ada data.</p>';
 
-  let rows = COMPUTED.filter((p) => p.tanggalTransfer).map((p) => {
+  const rows = COMPUTED.filter((p) => p.tanggalTransfer).map((p) => {
     const status = C.computeProgressStatus(p);
-    return { ...p, status, statusRank: STATUS_RANK[status.level] ?? 0 };
+    const sudahTagih = !!(p.progress || {}).penagihan;
+    return { ...p, status, statusRank: STATUS_RANK[status.level] ?? 0, tagihanRank: sudahTagih ? 1 : 0 };
   });
   rows.sort((a, b) => {
-    let va = a[PROGRESS_SORT.key], vb = b[PROGRESS_SORT.key];
-    if (PROGRESS_SORT.key === 'tanggalTransfer') { va = C.toDate(va)?.getTime() || 0; vb = C.toDate(vb)?.getTime() || 0; }
-    let cmp = 0;
-    if (va < vb) cmp = -1; else if (va > vb) cmp = 1;
-    if (cmp === 0) cmp = (b.status.days || 0) - (a.status.days || 0); // tie-break: paling lama belum lunas duluan
-    return PROGRESS_SORT.dir === 'asc' ? cmp : -cmp;
+    let va = a[INVESTOR_SORT.key], vb = b[INVESTOR_SORT.key];
+    if (INVESTOR_SORT.key === 'tanggalTransfer') { va = C.toDate(va)?.getTime() || 0; vb = C.toDate(vb)?.getTime() || 0; }
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return INVESTOR_SORT.dir === 'asc' ? -1 : 1;
+    if (va > vb) return INVESTOR_SORT.dir === 'asc' ? 1 : -1;
+    return 0;
   });
   qs('#progressBody').innerHTML = rows.map((p) => {
     const sudahTagih = !!(p.progress || {}).penagihan;
@@ -526,26 +529,43 @@ function renderInvestors(list) {
     const rowTitle = isCritical
       ? `Bermasalah: belum lunas ${p.status.days} hari sejak dana masuk` + (p.feeCB > 0 ? ` | Fee CB: ${fmtRp(p.feeCB)}` : '')
       : (p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : '');
-    const catatan = [p.keterangan, p.kendala ? ('Kendala: ' + p.kendala) : ''].filter(Boolean).join(' — ');
-    const rincianDana = `Modal Kerja: ${fmtRp(p.modalKerja)} | Keuntungan Bersih: ${fmtRp(p.keuntunganBersih)} | Bagi Hasil 30%: ${fmtRp(p.bagiHasil30)}`;
     return `
     <tr class="${rowClass}" title="${rowTitle}">
-      <td class="wrap">
-        <div>${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}</div>
-        <div class="sub-label">${esc(p.investor)}</div>
-      </td>
+      <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}</td>
+      <td class="wrap">${esc(p.investor)}</td>
       <td>${fmtDate(p.tanggalTransfer)}</td>
-      <td title="${esc(fmtRp(p.nilaiKontrak))}">${fmtRpShort(p.nilaiKontrak)}</td>
-      <td title="${esc(rincianDana)}">${fmtRpShort(p.totalPengembalian)}</td>
+      <td>${fmtRp(p.modalKerja)}</td>
+      <td>${fmtRp(p.nilaiKontrak)}</td>
+      <td>${fmtRp(p.keuntunganBersih)}</td>
+      <td>${fmtRp(p.bagiHasil30)}</td>
+      <td>${fmtRp(p.totalPengembalian)}</td>
       <td><span class="badge ${p.status.level}">${p.status.dot} ${p.status.label}</span></td>
       <td><span class="badge ${sudahTagih ? 'ok' : 'danger'}">${sudahTagih ? '🟢 Sudah Ditagih' : '🔴 Belum Tertagih'}</span></td>
-      <td class="wrap td-truncate" title="${esc(catatan || '—')}">${esc(catatan) || '—'}</td>
+      <td class="wrap">${esc(p.keterangan) || '—'}</td>
+      <td class="wrap">${esc(p.kendala) || '—'}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
+  }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
 
-  const counts = { ok: 0, warn: 0, danger: 0, overdue: 0, critical: 0, info: 0, neutral: 0 };
-  rows.forEach((p) => { if (counts[p.status.level] !== undefined) counts[p.status.level] += 1; });
-  qsa('#statusLegend b[data-count]').forEach((b) => { b.textContent = counts[b.dataset.count] || 0; });
+  // Baris TOTAL KESELURUHAN di footer tabel — meniru baris total di file Excel.
+  qs('#totalModalKerja').textContent = fmtRp(rows.reduce((a, p) => a + (p.modalKerja || 0), 0));
+  qs('#totalNilaiKontrak').textContent = fmtRp(rows.reduce((a, p) => a + (p.nilaiKontrak || 0), 0));
+  qs('#totalKeuntunganBersih').textContent = fmtRp(rows.reduce((a, p) => a + (p.keuntunganBersih || 0), 0));
+  qs('#totalBagiHasil').textContent = fmtRp(rows.reduce((a, p) => a + (p.bagiHasil30 || 0), 0));
+  qs('#totalKembaliInvestor').textContent = fmtRp(rows.reduce((a, p) => a + (p.totalPengembalian || 0), 0));
+
+  // Baris ringkasan jumlah proyek per status — meniru baris "X proyek baru masuk,
+  // Y dalam pengerjaan, ..." di file Excel, mengikuti tingkatan status yang sama
+  // dengan yang dipakai untuk sort kolom Status.
+  const STATUS_SUMMARY_LABELS = [
+    ['ok', '🟢 Dana Baru Masuk'], ['warn', '🟡 Dalam Pengerjaan'], ['danger', '🔴 Perlu Percepatan'],
+    ['overdue', '🟣 Sudah Jatuh Tempo'], ['critical', '⚫ Bermasalah (>4 Bulan)'],
+    ['info', '🔵 Lunas'], ['neutral', '⚪ Belum Ada Dana'],
+  ];
+  const statusCounts = { ok: 0, warn: 0, danger: 0, overdue: 0, critical: 0, info: 0, neutral: 0 };
+  rows.forEach((p) => { if (statusCounts[p.status.level] !== undefined) statusCounts[p.status.level] += 1; });
+  qs('#statusSummaryRow').innerHTML = STATUS_SUMMARY_LABELS
+    .map(([level, label]) => `<span class="status-count-item">${label}: <b>${statusCounts[level]}</b></span>`)
+    .join('');
 
   const belumTertagih = rows.filter((p) => !(p.progress || {}).penagihan);
   const totalBelumTertagih = belumTertagih.reduce((a, p) => a + (p.nilaiKontrak || 0), 0);
@@ -665,28 +685,27 @@ function applyTableFilters() {
 function wireTableControls() {
   qs('#searchInput').addEventListener('input', applyTableFilters);
   qs('#filterInvestor').addEventListener('change', applyTableFilters);
-  qsa('#view-proyek thead th[data-sort]').forEach((th) => {
+  qsa('thead th[data-sort]').forEach((th) => {
     th.addEventListener('click', () => {
       const key = th.dataset.sort;
       if (TABLE_SORT.key === key) TABLE_SORT.dir = TABLE_SORT.dir === 'asc' ? 'desc' : 'asc';
       else { TABLE_SORT.key = key; TABLE_SORT.dir = 'desc'; }
-      qsa('#view-proyek thead th[data-sort] .arrow').forEach((a) => (a.textContent = ''));
+      qsa('thead th[data-sort] .arrow').forEach((a) => (a.textContent = ''));
       qs('.arrow', th).textContent = TABLE_SORT.dir === 'asc' ? '↑' : '↓';
       applyTableFilters();
     });
   });
   qs('#addProjectBtn').addEventListener('click', () => openForm(null));
-  wireProgressTableSort();
 }
 
-function wireProgressTableSort() {
-  qsa('#view-investor thead th[data-psort]').forEach((th) => {
+function wireInvestorTableSort() {
+  qsa('#view-investor thead th[data-isort]').forEach((th) => {
     th.addEventListener('click', () => {
-      const key = th.dataset.psort;
-      if (PROGRESS_SORT.key === key) PROGRESS_SORT.dir = PROGRESS_SORT.dir === 'asc' ? 'desc' : 'asc';
-      else { PROGRESS_SORT.key = key; PROGRESS_SORT.dir = 'desc'; }
-      qsa('#view-investor thead th[data-psort] .arrow').forEach((a) => (a.textContent = ''));
-      qs('.arrow', th).textContent = PROGRESS_SORT.dir === 'asc' ? '↑' : '↓';
+      const key = th.dataset.isort;
+      if (INVESTOR_SORT.key === key) INVESTOR_SORT.dir = INVESTOR_SORT.dir === 'asc' ? 'desc' : 'asc';
+      else { INVESTOR_SORT.key = key; INVESTOR_SORT.dir = 'desc'; }
+      qsa('#view-investor thead th[data-isort] .arrow').forEach((a) => (a.textContent = ''));
+      qs('.arrow', th).textContent = INVESTOR_SORT.dir === 'asc' ? '↑' : '↓';
       renderInvestors(C.groupByInvestor(COMPUTED));
     });
   });
