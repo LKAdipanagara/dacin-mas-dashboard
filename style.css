@@ -13,6 +13,7 @@
   --danger:#C25450;
   --info:#5A96DC;
   --overdue:#8B6FCB;
+  --critical:#FF4C4C;
   --cashback:#4FB8C4;
   --ink:#ECE7DD;
   --ink-dim:#9AA3A8;
@@ -187,13 +188,32 @@ tbody tr:hover{background:rgba(198,154,82,.05)}
 tbody tr:last-child td{border-bottom:none}
 tbody tr.row-cashback{background:rgba(79,184,196,.08); box-shadow:inset 3px 0 0 var(--cashback)}
 tbody tr.row-cashback:hover{background:rgba(79,184,196,.15)}
+tbody tr.row-critical{background:rgba(255,76,76,.10); box-shadow:inset 3px 0 0 var(--critical); animation:critical-pulse 2.4s ease-in-out infinite}
+tbody tr.row-critical:hover{background:rgba(255,76,76,.18)}
+@keyframes critical-pulse{
+  0%,100%{box-shadow:inset 3px 0 0 var(--critical)}
+  50%{box-shadow:inset 3px 0 0 var(--critical), inset 0 0 14px rgba(255,76,76,.18)}
+}
 .badge{display:inline-block; padding:2px 8px; border-radius:999px; font-size:10.5px; font-family:var(--font-mono)}
 .badge.ok{background:rgba(79,157,110,.15); color:var(--ok)}
 .badge.warn{background:rgba(217,164,65,.15); color:var(--warn)}
 .badge.info{background:rgba(90,150,220,.15); color:var(--info)}
 .badge.neutral{background:rgba(154,163,168,.12); color:var(--ink-faint)}
 .badge.overdue{background:rgba(139,111,203,.18); color:var(--overdue)}
+.badge.critical{background:rgba(255,76,76,.22); color:#fff; border:1px solid var(--critical); font-weight:600}
 .badge.cashback{background:rgba(79,184,196,.18); color:var(--cashback)}
+
+/* ===== Mode Investor / Stakeholder (lihat saja, link ?viewer=1) ===== */
+.viewer-mode #addProjectBtn,
+.viewer-mode #settingsBtn,
+.viewer-mode #seedBanner,
+.viewer-mode .row-actions{display:none !important}
+.viewer-badge{
+  display:none; align-items:center; gap:6px; padding:3px 10px; border-radius:999px;
+  background:rgba(79,184,196,.15); color:var(--cashback); font-size:10.5px;
+  font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.5px; margin-left:8px;
+}
+.viewer-mode .viewer-badge{display:inline-flex}
 
 .status-legend{display:flex; gap:14px; flex-wrap:wrap; margin:10px 0 4px; font-size:11.5px; color:var(--ink-dim)}
 .status-legend span{display:inline-flex; align-items:center; gap:6px}
@@ -204,6 +224,18 @@ tbody tr.row-cashback:hover{background:rgba(79,184,196,.15)}
 .status-legend .info{background:var(--info)}
 .status-legend .neutral{background:var(--ink-faint)}
 .status-legend .overdue{background:var(--overdue)}
+.status-legend .critical{background:var(--critical)}
+
+#bermasalahCard{border:1px solid rgba(255,76,76,.4)}
+#bermasalahCard .irow b{color:var(--critical)}
+.bermasalah-list{margin-top:8px; display:flex; flex-direction:column; gap:6px}
+.bermasalah-row{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:7px 10px; border-radius:8px; background:rgba(255,76,76,.06);
+  border:1px solid rgba(255,76,76,.2); font-size:12.5px;
+}
+.bermasalah-row .b-name{font-weight:600; color:var(--ink)}
+.bermasalah-row .b-meta{color:var(--ink-dim); font-family:var(--font-mono); font-size:11px; text-align:right}
 
 .search-bar{display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap}
 .search-bar input, .search-bar select{

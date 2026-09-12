@@ -204,15 +204,21 @@ export function forecastComponentCost(nilaiKontrak, computedProjects) {
 
 /**
  * Status dana investor per proyek — meniru persis skema warna & tenor 90 hari
- * (3 bulan) yang selama ini dipakai manual di file Excel pemantauan progres:
+ * (3 bulan) yang selama ini dipakai manual di file Excel pemantauan progres,
+ * ditambah satu tenor lagi (>120 hari / 4 bulan) untuk menandai proyek yang
+ * pembayarannya benar-benar tidak lancar (mis. seperti kasus Chemindo):
  *   BIRU  = selesai pekerjaan & dana sudah lunas dikembalikan ke investor
  *   HIJAU = dana baru masuk (0-30 hari sejak Tgl Transfer)
  *   KUNING = dalam pengerjaan, masih ada waktu (31-60 hari)
  *   MERAH = perlu percepatan, mendekati jatuh tempo (61-90 hari, belum lunas)
- *   UNGU  = sudah jatuh tempo / follow up urgent (>90 hari, belum lunas)
+ *   UNGU  = sudah jatuh tempo / follow up urgent (91-120 hari, belum lunas)
+ *   HITAM/KRITIS = bermasalah, pembayaran macet (>120 hari / >4 bulan, belum lunas)
  *   ABU-ABU = belum ada dana masuk sama sekali (netral, belum berlaku status apapun)
  * Tenor 90 hari ini diturunkan dari pola tanggal transfer vs status yang sudah
  * ditandai manual oleh Lenggana di Excel (bukan angka bebas) — lihat riwayat proyek.
+ * Tenor 120 hari (4 bulan) ditambahkan atas permintaan eksplisit untuk menandai
+ * klien/perusahaan dengan riwayat pembayaran tidak lancar secara berbeda dari
+ * proyek yang baru saja lewat 90 hari.
  */
 export function computeProgressStatus(p) {
   const progress = p.progress || {};
@@ -221,10 +227,33 @@ export function computeProgressStatus(p) {
   const d = toDate(p.tanggalTransfer);
   if (!d) return { label: 'Cek Tanggal', level: 'warn', dot: '🟡' };
   const days = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (days <= 30) return { label: 'Dana Baru Masuk', level: 'ok', dot: '🟢' };
-  if (days <= 60) return { label: 'Dalam Pengerjaan', level: 'warn', dot: '🟡' };
-  if (days <= 90) return { label: 'Perlu Percepatan', level: 'danger', dot: '🔴' };
-  return { label: 'Sudah Jatuh Tempo - Follow Up Urgent', level: 'overdue', dot: '🟣' };
+  if (days <= 30) return { label: 'Dana Baru Masuk', level: 'ok', dot: '🟢', days };
+  if (days <= 60) return { label: 'Dalam Pengerjaan', level: 'warn', dot: '🟡', days };
+  if (days <= 90) return { label: 'Perlu Percepatan', level: 'danger', dot: '🔴', days };
+  if (days <= 120) return { label: 'Sudah Jatuh Tempo - Follow Up Urgent', level: 'overdue', dot: '🟣', days };
+  return { label: 'Bermasalah - Pembayaran Macet (>4 Bulan)', level: 'critical', dot: '⚫', days };
+}
+
+/**
+ * Kelompokkan proyek dengan status 'critical' (>4 bulan belum lunas) per
+ * perusahaan, supaya klien yang berulang kali telat (mis. Chemindo) langsung
+ * kelihatan sebagai satu baris ringkasan, bukan tersebar per proyek.
+ */
+export function computeBermasalahByClient(computedProjects) {
+  const map = new Map();
+  computedProjects.forEach((p) => {
+    const status = computeProgressStatus(p);
+    if (status.level !== 'critical') return;
+    const key = normalizeCompanyName(p.perusahaan);
+    if (!map.has(key)) map.set(key, { perusahaan: p.perusahaan, jumlahProyek: 0, totalNilaiKontrak: 0, maxHari: 0 });
+    const e = map.get(key);
+    e.jumlahProyek += 1;
+    e.totalNilaiKontrak += p.nilaiKontrak || 0;
+    e.maxHari = Math.max(e.maxHari, status.days || 0);
+  });
+  const list = Array.from(map.values());
+  list.sort((a, b) => b.maxHari - a.maxHari);
+  return list;
 }
 
 /* ===================== Validation ===================== */

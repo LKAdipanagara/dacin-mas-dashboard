@@ -507,8 +507,13 @@ function renderInvestors(list) {
   rows.sort((a, b) => C.toDate(b.tanggalTransfer) - C.toDate(a.tanggalTransfer));
   qs('#progressBody').innerHTML = rows.map((p) => {
     const sudahTagih = !!(p.progress || {}).penagihan;
+    const isCritical = p.status.level === 'critical';
+    const rowClass = [p.feeCB > 0 ? 'row-cashback' : '', isCritical ? 'row-critical' : ''].filter(Boolean).join(' ');
+    const rowTitle = isCritical
+      ? `Bermasalah: belum lunas ${p.status.days} hari sejak dana masuk` + (p.feeCB > 0 ? ` | Fee CB: ${fmtRp(p.feeCB)}` : '')
+      : (p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : '');
     return `
-    <tr class="${p.feeCB > 0 ? 'row-cashback' : ''}" title="${p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : ''}">
+    <tr class="${rowClass}" title="${rowTitle}">
       <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}</td>
       <td class="wrap">${esc(p.investor)}</td>
       <td>${fmtDate(p.tanggalTransfer)}</td>
@@ -528,6 +533,17 @@ function renderInvestors(list) {
   const totalBelumTertagih = belumTertagih.reduce((a, p) => a + (p.nilaiKontrak || 0), 0);
   qs('#belumTertagihCount').textContent = belumTertagih.length;
   qs('#belumTertagihTotal').textContent = fmtRp(totalBelumTertagih);
+
+  const bermasalah = C.computeBermasalahByClient(COMPUTED);
+  qs('#bermasalahCount').textContent = bermasalah.reduce((a, e) => a + e.jumlahProyek, 0);
+  qs('#bermasalahTotal').textContent = fmtRp(bermasalah.reduce((a, e) => a + e.totalNilaiKontrak, 0));
+  qs('#bermasalahList').innerHTML = bermasalah.length
+    ? bermasalah.map((e) => `
+      <div class="bermasalah-row">
+        <span class="b-name">⚫ ${esc(e.perusahaan)}</span>
+        <span class="b-meta">${e.jumlahProyek} proyek · ${fmtRp(e.totalNilaiKontrak)} · maks ${e.maxHari} hari belum lunas</span>
+      </div>`).join('')
+    : '<p class="section-note">Tidak ada perusahaan dengan pembayaran macet &gt;4 bulan saat ini.</p>';
 }
 
 /* ===================== Component cost ===================== */
@@ -597,10 +613,17 @@ function applyTableFilters() {
     return 0;
   });
   qs('#tableCount').textContent = rows.length + ' proyek';
-  qs('#projectsBody').innerHTML = rows.map((p) => `
-    <tr class="${p.feeCB > 0 ? 'row-cashback' : ''}" title="${p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : ''}">
+  qs('#projectsBody').innerHTML = rows.map((p) => {
+    const status = C.computeProgressStatus(p);
+    const isCritical = status.level === 'critical';
+    const rowClass = [p.feeCB > 0 ? 'row-cashback' : '', isCritical ? 'row-critical' : ''].filter(Boolean).join(' ');
+    const rowTitle = isCritical
+      ? `Bermasalah: belum lunas ${status.days} hari sejak dana masuk` + (p.feeCB > 0 ? ` | Fee CB: ${fmtRp(p.feeCB)}` : '')
+      : (p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : '');
+    return `
+    <tr class="${rowClass}" title="${rowTitle}">
       <td>${fmtDate(p.tanggalTransfer)}</td>
-      <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}</td>
+      <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}${isCritical ? ' <span class="badge critical">⚫ &gt;4 Bulan</span>' : ''}</td>
       <td class="wrap">${esc(p.jenisPekerjaan)}</td>
       <td>${fmtRp(p.nilaiKontrak)}</td>
       <td>${fmtRp(p.modalKerja)}</td>
@@ -614,7 +637,8 @@ function applyTableFilters() {
         <button class="icon-btn" data-edit="${p.id}" title="Ubah">✎</button>
         <button class="icon-btn danger" data-del="${p.id}" title="Hapus">🗑</button>
       </td>
-    </tr>`).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
 
   qsa('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openForm(btn.dataset.edit)));
   qsa('[data-del]').forEach((btn) => btn.addEventListener('click', () => handleDelete(btn.dataset.del)));

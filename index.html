@@ -45,7 +45,7 @@
     <div class="brand">
       <img class="brand-mark" src="./brand-icon.png" alt="Dacin Mas">
       <div class="brand-text">
-        <span class="name">DACIN MAS</span>
+        <span class="name">DACIN MAS<span class="viewer-badge">👁 Lihat Saja</span></span>
         <span class="sub" id="userEmail">PANEL KENDALI PROYEK</span>
       </div>
     </div>
@@ -177,7 +177,8 @@
       </button>
     </div>
     <p class="section-note" id="tableCount"></p>
-    <p class="section-note"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:3px;background:var(--cashback);display:inline-block"></i>Baris disorot = proyek dengan Fee CB (cashback)</span></p>
+    <p class="section-note"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:3px;background:var(--cashback);display:inline-block"></i>Baris disorot biru = proyek dengan Fee CB (cashback)</span></p>
+    <p class="section-note"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:3px;background:var(--critical);display:inline-block"></i>Baris disorot merah berkedip = pembayaran belum lunas &gt;4 bulan sejak dana masuk (lihat detail di tab Investor)</span></p>
     <div class="search-bar">
       <input type="text" id="searchInput" placeholder="Cari perusahaan, No PO, atau jenis pekerjaan…">
       <select id="filterInvestor"></select>
@@ -190,7 +191,7 @@
           <th data-sort="jenisPekerjaan">Jenis Pekerjaan <span class="arrow"></span></th>
           <th data-sort="nilaiKontrak">Nilai Kontrak <span class="arrow"></span></th>
           <th data-sort="modalKerja">Modal Kerja <span class="arrow"></span></th>
-          <th data-sort="keuntunganNet">Untung Net <span class="arrow"></span></th>
+          <th data-sort="keuntunganNet" title="Untung Net = Nilai Kontrak − Modal Kerja − Bagi Hasil Investor 30% − PPh Final 0,5% − Fee CB (jika ada). Berbeda dari 'Keuntungan Bersih' di tab Investor, yang belum dikurangi Bagi Hasil & PPh Final.">Untung Net <span class="arrow"></span></th>
           <th data-sort="pajakPerusahaan">Pajak Perusahaan <span class="arrow"></span></th>
           <th data-sort="investor">Investor <span class="arrow"></span></th>
           <th>Penawaran</th>
@@ -211,10 +212,16 @@
       <span><i class="ok"></i>Dana Baru Masuk (0-30 hari)</span>
       <span><i class="warn"></i>Dalam Pengerjaan (31-60 hari)</span>
       <span><i class="danger"></i>Perlu Percepatan (61-90 hari)</span>
-      <span><i class="overdue"></i>Sudah Jatuh Tempo / Follow Up Urgent (&gt;90 hari)</span>
+      <span><i class="overdue"></i>Sudah Jatuh Tempo / Follow Up Urgent (91-120 hari)</span>
+      <span><i class="critical"></i>Bermasalah - Pembayaran Macet (&gt;4 Bulan)</span>
       <span><i class="info"></i>Lunas - Dana Kembali ke Investor</span>
       <span><i class="neutral"></i>Belum Ada Dana</span>
       <span><i style="background:var(--cashback)"></i>Ada Fee CB (Cashback)</span>
+    </div>
+    <div class="panel panel-pad" id="bermasalahCard" style="margin-bottom:14px">
+      <div class="irow"><span>⚫ Proyek Bermasalah (&gt;4 Bulan Belum Lunas)</span><b id="bermasalahCount">0</b></div>
+      <div class="irow"><span>Akumulasi Nilai Kontrak Bermasalah</span><b id="bermasalahTotal">Rp 0</b></div>
+      <div class="bermasalah-list" id="bermasalahList"></div>
     </div>
     <div class="panel panel-pad" id="belumTertagihCard" style="margin-bottom:14px">
       <div class="irow"><span>Proyek Belum Tertagih</span><b id="belumTertagihCount">0</b></div>
@@ -236,7 +243,7 @@
           <tr>
             <th>Modal Kerja</th>
             <th>Nilai Kontrak</th>
-            <th>Keuntungan Bersih</th>
+            <th title="Keuntungan Bersih = Nilai Kontrak − Modal Kerja (sebelum Bagi Hasil Investor & PPh Final dipotong). Untuk laba setelah semua potongan, lihat 'Untung Net' di tab Proyek.">Keuntungan Bersih</th>
             <th>Bagi Hasil 30%</th>
             <th>Total Kembali ke Investor</th>
           </tr>
