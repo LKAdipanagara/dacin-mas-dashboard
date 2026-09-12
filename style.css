@@ -203,6 +203,17 @@ tbody tr.row-critical:hover{background:rgba(255,76,76,.18)}
 .badge.critical{background:rgba(255,76,76,.22); color:#fff; border:1px solid var(--critical); font-weight:600}
 .badge.cashback{background:rgba(79,184,196,.18); color:var(--cashback)}
 
+/* Tabel ringkas (tab Investor) — kolom lebih sedikit + angka format singkat,
+   supaya muat di lebar layar laptop tanpa perlu geser ke kanan. */
+table.table-compact{min-width:0; width:100%; table-layout:auto}
+table.table-compact td, table.table-compact th{padding:9px 10px}
+.sub-label{font-size:10.5px; color:var(--ink-faint); margin-top:2px; font-family:var(--font-mono)}
+.td-truncate{max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap !important}
+.count-pill{
+  display:inline-block; min-width:16px; padding:0 5px; border-radius:999px; text-align:center;
+  background:var(--panel-3); color:var(--ink); font-family:var(--font-mono); font-size:10px; font-weight:600;
+}
+
 /* ===== Mode Investor / Stakeholder (lihat saja, link ?viewer=1) ===== */
 .viewer-mode #addProjectBtn,
 .viewer-mode #settingsBtn,

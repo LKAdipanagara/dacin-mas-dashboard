@@ -209,15 +209,16 @@
 
     <div class="section-head"><div><div class="eyebrow">Pemantauan</div><h2>Progres Dana per Proyek</h2></div></div>
     <div class="status-legend" id="statusLegend">
-      <span><i class="ok"></i>Dana Baru Masuk (0-30 hari)</span>
-      <span><i class="warn"></i>Dalam Pengerjaan (31-60 hari)</span>
-      <span><i class="danger"></i>Perlu Percepatan (61-90 hari)</span>
-      <span><i class="overdue"></i>Sudah Jatuh Tempo / Follow Up Urgent (91-120 hari)</span>
-      <span><i class="critical"></i>Bermasalah - Pembayaran Macet (&gt;4 Bulan)</span>
-      <span><i class="info"></i>Lunas - Dana Kembali ke Investor</span>
-      <span><i class="neutral"></i>Belum Ada Dana</span>
+      <span><i class="ok"></i>Dana Baru Masuk (0-30 hari) <b class="count-pill" data-count="ok">0</b></span>
+      <span><i class="warn"></i>Dalam Pengerjaan (31-60 hari) <b class="count-pill" data-count="warn">0</b></span>
+      <span><i class="danger"></i>Perlu Percepatan (61-90 hari) <b class="count-pill" data-count="danger">0</b></span>
+      <span><i class="overdue"></i>Sudah Jatuh Tempo (91-120 hari) <b class="count-pill" data-count="overdue">0</b></span>
+      <span><i class="critical"></i>Bermasalah (&gt;4 Bulan) <b class="count-pill" data-count="critical">0</b></span>
+      <span><i class="info"></i>Lunas <b class="count-pill" data-count="info">0</b></span>
+      <span><i class="neutral"></i>Belum Ada Dana <b class="count-pill" data-count="neutral">0</b></span>
       <span><i style="background:var(--cashback)"></i>Ada Fee CB (Cashback)</span>
     </div>
+    <p class="section-note">Klik judul kolom <b>Status</b>, <b>Tgl Transfer</b>, <b>Nilai Kontrak</b>, atau <b>Total Kembali</b> untuk mengurutkan. Arahkan kursor ke angka/Catatan untuk lihat rincian lengkap.</p>
     <div class="panel panel-pad" id="bermasalahCard" style="margin-bottom:14px">
       <div class="irow"><span>⚫ Proyek Bermasalah (&gt;4 Bulan Belum Lunas)</span><b id="bermasalahCount">0</b></div>
       <div class="irow"><span>Akumulasi Nilai Kontrak Bermasalah</span><b id="bermasalahTotal">Rp 0</b></div>
@@ -228,24 +229,16 @@
       <div class="irow"><span>Akumulasi Nilai Belum Tertagih</span><b id="belumTertagihTotal">Rp 0</b></div>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="table-compact">
         <thead>
           <tr>
-            <th rowspan="2">Perusahaan</th>
-            <th rowspan="2">Investor</th>
-            <th rowspan="2">Tgl Transfer</th>
-            <th colspan="5" class="th-banner">DATA KEUANGAN PROYEK</th>
-            <th rowspan="2">Status</th>
-            <th rowspan="2">Status Tagihan</th>
-            <th rowspan="2">Keterangan</th>
-            <th rowspan="2">Kendala</th>
-          </tr>
-          <tr>
-            <th>Modal Kerja</th>
-            <th>Nilai Kontrak</th>
-            <th title="Keuntungan Bersih = Nilai Kontrak − Modal Kerja (sebelum Bagi Hasil Investor & PPh Final dipotong). Untuk laba setelah semua potongan, lihat 'Untung Net' di tab Proyek.">Keuntungan Bersih</th>
-            <th>Bagi Hasil 30%</th>
-            <th>Total Kembali ke Investor</th>
+            <th>Perusahaan</th>
+            <th data-psort="tanggalTransfer">Tgl Transfer <span class="arrow"></span></th>
+            <th data-psort="nilaiKontrak">Nilai Kontrak <span class="arrow"></span></th>
+            <th data-psort="totalPengembalian" title="Total Kembali ke Investor = Modal Kerja + Bagi Hasil 30%. Arahkan kursor untuk rincian Modal Kerja, Keuntungan Bersih, dan Bagi Hasil.">Total Kembali <span class="arrow"></span></th>
+            <th data-psort="statusRank">Status <span class="arrow">↓</span></th>
+            <th>Tagihan</th>
+            <th>Catatan</th>
           </tr>
         </thead>
         <tbody id="progressBody"></tbody>
