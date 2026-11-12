@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dacin-mas-crud-v18';
+const CACHE_NAME = 'dacin-mas-crud-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,9 +9,8 @@ const APP_SHELL = [
   './firebase-config.js',
   './seed-data.js',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './brand-icon.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

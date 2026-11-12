@@ -7,8 +7,8 @@
 <meta name="description" content="Pencatatan proyek, bagi hasil investor, dan monitoring threshold pajak PP 20/2026 untuk CV Dacin Mas Calibration Services — sinkron real-time dari HP maupun web.">
 <meta name="theme-color" content="#12161A">
 <link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./icon-192.png">
-<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
@@ -25,7 +25,12 @@
 <!-- ===== Login screen ===== -->
 <div id="loginScreen" class="full-screen-msg" style="display:none">
   <form id="loginForm" class="login-box">
-    <img class="brand-mark" src="./brand-icon.png" alt="Dacin Mas" style="width:56px;height:56px;margin:0 auto 14px;display:block">
+    <svg class="brand-mark" viewBox="0 0 36 36" fill="none" style="width:44px;height:44px;margin:0 auto 14px">
+      <rect x="1.5" y="1.5" width="33" height="33" rx="6" fill="#1B2126" stroke="#2C343B"/>
+      <circle cx="18" cy="18" r="11.5" stroke="#C69A52" stroke-width="1.6"/>
+      <line x1="18" y1="18" x2="24.5" y2="12" stroke="#ECE7DD" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="18" cy="18" r="1.8" fill="#C69A52"/>
+    </svg>
     <h1>DACIN MAS</h1>
     <p class="section-note" style="text-align:center;margin-bottom:20px">Masuk untuk mencatat &amp; memantau proyek</p>
     <label>Email<input type="email" id="loginEmail" required autocomplete="username"></label>
@@ -43,9 +48,14 @@
 <header class="app-header">
   <div class="header-inner">
     <div class="brand">
-      <img class="brand-mark" src="./brand-icon.png" alt="Dacin Mas">
+      <svg class="brand-mark" viewBox="0 0 36 36" fill="none">
+        <rect x="1.5" y="1.5" width="33" height="33" rx="6" fill="#1B2126" stroke="#2C343B"/>
+        <circle cx="18" cy="18" r="11.5" stroke="#C69A52" stroke-width="1.6"/>
+        <line x1="18" y1="18" x2="24.5" y2="12" stroke="#ECE7DD" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="18" cy="18" r="1.8" fill="#C69A52"/>
+      </svg>
       <div class="brand-text">
-        <span class="name">DACIN MAS<span class="viewer-badge">👁 Lihat Saja</span></span>
+        <span class="name">DACIN MAS</span>
         <span class="sub" id="userEmail">PANEL KENDALI PROYEK</span>
       </div>
     </div>
@@ -54,11 +64,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v13m0 0l-4-4m4 4l4-4M5 19h14"/></svg>
         <span class="upload-label">Instal</span>
       </button>
-      <button class="btn" id="backupBtn" title="Unduh backup seluruh data (Excel) — untuk jaga-jaga jika ada masalah teknis, jaringan, atau listrik">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-        <span class="upload-label">Backup</span>
+      <button class="btn admin-only" id="shareBtn" title="Bagikan link pemantau (hanya lihat)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+        <span class="upload-label">Bagikan</span>
       </button>
-      <button class="btn" id="settingsBtn" title="Pengaturan target &amp; pajak">
+      <button class="btn admin-only" id="settingsBtn" title="Pengaturan target &amp; pajak">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </button>
       <button class="btn" id="logoutBtn" title="Keluar">
@@ -78,7 +88,7 @@
 
 <main>
 
-  <div class="panel seed-banner" id="seedBanner" style="display:none">
+  <div class="panel seed-banner admin-only" id="seedBanner" style="display:none">
     <div>
       <strong>Data masih kosong.</strong>
       <p class="section-note">Impor 30 proyek awal dari catatan Excel sebelumnya, atau langsung mulai catat proyek baru lewat tombol "Tambah Proyek".</p>
@@ -134,23 +144,6 @@
         <canvas id="clientChart"></canvas>
       </div>
     </div>
-
-    <div class="section-head"><div><div class="eyebrow">Tabulasi</div><h2>Rincian Omset per Bulan</h2></div></div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Bulan</th><th>Omset</th><th>Modal Kerja</th><th>Laba Kotor</th><th>Margin</th><th>Jml Proyek</th></tr></thead>
-        <tbody id="monthlyBody"></tbody>
-      </table>
-    </div>
-
-    <div class="section-head"><div><div class="eyebrow">Tabulasi</div><h2>Kontribusi &amp; Konsentrasi Klien</h2></div></div>
-    <p class="section-note" id="clientConcentrationNote"></p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Klien</th><th>Omset</th><th>Jml Proyek</th><th>Kontribusi</th></tr></thead>
-        <tbody id="clientBody"></tbody>
-      </table>
-    </div>
   </section>
 
   <!-- ===== 03 TARGET ===== -->
@@ -171,14 +164,24 @@
   <section class="view" id="view-proyek">
     <div class="section-head">
       <div><div class="eyebrow">Log Proyek</div><h2>Daftar Proyek</h2></div>
-      <button class="btn btn-primary" id="addProjectBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-        Tambah Proyek
-      </button>
+      <div style="display:flex; gap:8px; flex-wrap:wrap">
+        <button class="btn admin-only" id="exportExcelBtn" title="Unduh semua data sebagai cadangan Excel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Unduh Backup Excel
+        </button>
+        <button class="btn admin-only" id="importExcelBtn" title="Tambah/perbarui banyak proyek sekaligus dari file Excel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+          Impor dari Excel
+        </button>
+        <input type="file" id="excelImportInput" accept=".xlsx,.xls">
+        <button class="btn btn-primary admin-only" id="addProjectBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Tambah Proyek
+        </button>
+      </div>
     </div>
+    <p class="section-note admin-only">Terkendala koneksi atau form bermasalah? Isi data di Excel lalu pakai "Impor dari Excel" — cara ini tetap butuh internet untuk menyimpan, tapi jauh lebih cepat untuk banyak baris sekaligus dan jadi cadangan kalau formulir sedang tidak bisa dipakai.</p>
     <p class="section-note" id="tableCount"></p>
-    <p class="section-note"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:3px;background:var(--cashback);display:inline-block"></i>Baris disorot biru = proyek dengan Fee CB (cashback)</span></p>
-    <p class="section-note"><span style="display:inline-flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:3px;background:var(--critical);display:inline-block"></i>Baris disorot merah berkedip = pembayaran belum lunas &gt;4 bulan sejak dana masuk (lihat detail di tab Investor)</span></p>
     <div class="search-bar">
       <input type="text" id="searchInput" placeholder="Cari perusahaan, No PO, atau jenis pekerjaan…">
       <select id="filterInvestor"></select>
@@ -191,11 +194,9 @@
           <th data-sort="jenisPekerjaan">Jenis Pekerjaan <span class="arrow"></span></th>
           <th data-sort="nilaiKontrak">Nilai Kontrak <span class="arrow"></span></th>
           <th data-sort="modalKerja">Modal Kerja <span class="arrow"></span></th>
-          <th data-sort="keuntunganNet" title="Untung Net = Nilai Kontrak − Modal Kerja − Bagi Hasil Investor 30% − PPh Final 0,5% − Fee CB (jika ada). Berbeda dari 'Keuntungan Bersih' di tab Investor, yang belum dikurangi Bagi Hasil & PPh Final.">Untung Net <span class="arrow"></span></th>
-          <th data-sort="pajakPerusahaan">Pajak Perusahaan <span class="arrow"></span></th>
+          <th data-sort="keuntunganNet">Untung Net <span class="arrow"></span></th>
           <th data-sort="investor">Investor <span class="arrow"></span></th>
-          <th>Penawaran</th>
-          <th>Aksi</th>
+          <th class="admin-only">Aksi</th>
         </tr></thead>
         <tbody id="projectsBody"></tbody>
       </table>
@@ -208,81 +209,10 @@
     <div class="investor-grid" id="investorGrid"></div>
 
     <div class="section-head"><div><div class="eyebrow">Pemantauan</div><h2>Progres Dana per Proyek</h2></div></div>
-    <div class="status-legend" id="statusLegend">
-      <span><i class="ok"></i>Dana Baru Masuk (0-30 hari)</span>
-      <span><i class="warn"></i>Dalam Pengerjaan (31-60 hari)</span>
-      <span><i class="danger"></i>Perlu Percepatan (61-90 hari)</span>
-      <span><i class="overdue"></i>Sudah Jatuh Tempo / Follow Up Urgent (91-120 hari)</span>
-      <span><i class="critical"></i>Bermasalah - Pembayaran Macet (&gt;4 Bulan)</span>
-      <span><i class="info"></i>Lunas - Dana Kembali ke Investor</span>
-      <span><i class="neutral"></i>Belum Ada Dana</span>
-      <span><i style="background:var(--cashback)"></i>Ada Fee CB (Cashback)</span>
-    </div>
-    <div class="panel panel-pad" id="bermasalahCard" style="margin-bottom:14px">
-      <div class="irow"><span>⚫ Proyek Bermasalah (&gt;4 Bulan Belum Lunas)</span><b id="bermasalahCount">0</b></div>
-      <div class="irow"><span>Akumulasi Nilai Kontrak Bermasalah</span><b id="bermasalahTotal">Rp 0</b></div>
-      <div class="bermasalah-list" id="bermasalahList"></div>
-    </div>
-    <div class="panel panel-pad" id="belumTertagihCard" style="margin-bottom:14px">
-      <div class="irow"><span>Proyek Belum Tertagih</span><b id="belumTertagihCount">0</b></div>
-      <div class="irow"><span>Akumulasi Nilai Belum Tertagih</span><b id="belumTertagihTotal">Rp 0</b></div>
-    </div>
-    <div class="filter-toolbar">
-      <div class="filter-field">
-        <label for="filterInvestorProgress">Investor</label>
-        <select id="filterInvestorProgress"></select>
-      </div>
-      <div class="filter-field">
-        <label for="filterStatusProgress">Status Progres Pekerjaan</label>
-        <select id="filterStatusProgress">
-          <option value="">Semua Status</option>
-          <option value="ok">🟢 Dana Baru Masuk</option>
-          <option value="warn">🟡 Dalam Pengerjaan</option>
-          <option value="danger">🔴 Perlu Percepatan</option>
-          <option value="overdue">🟣 Sudah Jatuh Tempo</option>
-          <option value="critical">⚫ Bermasalah (&gt;4 Bulan)</option>
-          <option value="info">🔵 Lunas</option>
-          <option value="neutral">⚪ Belum Ada Dana</option>
-        </select>
-      </div>
-    </div>
-    <p class="section-note" style="margin-bottom:10px">Klik judul kolom untuk mengurutkan (sama seperti tabel di tab Proyek). Baris TOTAL di bawah tabel menyesuaikan filter yang dipilih.</p>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th rowspan="2" data-isort="perusahaan">Perusahaan <span class="arrow"></span></th>
-            <th rowspan="2" data-isort="investor">Investor <span class="arrow"></span></th>
-            <th rowspan="2" data-isort="tanggalTransfer">Tgl Transfer <span class="arrow">↓</span></th>
-            <th colspan="5" class="th-banner">DATA KEUANGAN PROYEK</th>
-            <th rowspan="2" data-isort="statusRank">Status Progres Pekerjaan <span class="arrow"></span></th>
-            <th rowspan="2" data-isort="tagihanRank">Status Tagihan <span class="arrow"></span></th>
-            <th rowspan="2" data-isort="keterangan">Keterangan <span class="arrow"></span></th>
-            <th rowspan="2" data-isort="kendala">Kendala <span class="arrow"></span></th>
-          </tr>
-          <tr>
-            <th data-isort="modalKerja">Modal Kerja <span class="arrow"></span></th>
-            <th data-isort="nilaiKontrak">Nilai Kontrak <span class="arrow"></span></th>
-            <th data-isort="keuntunganBersih" title="Keuntungan Bersih = Nilai Kontrak − Modal Kerja (sebelum Bagi Hasil Investor & PPh Final dipotong). Untuk laba setelah semua potongan, lihat 'Untung Net' di tab Proyek.">Keuntungan Bersih <span class="arrow"></span></th>
-            <th data-isort="bagiHasil30">Bagi Hasil 30% <span class="arrow"></span></th>
-            <th data-isort="totalPengembalian">Total Kembali ke Investor <span class="arrow"></span></th>
-          </tr>
-        </thead>
+        <thead><tr><th>Perusahaan</th><th>Investor</th><th>Tgl Transfer</th><th>Total Kembali</th><th>Status</th></tr></thead>
         <tbody id="progressBody"></tbody>
-        <tfoot>
-          <tr class="totals-row">
-            <td colspan="3" id="totalsRowLabel">TOTAL KESELURUHAN</td>
-            <td id="totalModalKerja">Rp 0</td>
-            <td id="totalNilaiKontrak">Rp 0</td>
-            <td id="totalKeuntunganBersih">Rp 0</td>
-            <td id="totalBagiHasil">Rp 0</td>
-            <td id="totalKembaliInvestor">Rp 0</td>
-            <td colspan="4"></td>
-          </tr>
-          <tr class="status-summary-row">
-            <td colspan="12" id="statusSummaryRow"></td>
-          </tr>
-        </tfoot>
       </table>
     </div>
   </section>
@@ -333,7 +263,6 @@
           <label>Investor / Sumber Dana<input type="text" id="f_investor" list="investorOptions"><datalist id="investorOptions"></datalist><span class="field-error" id="err_investor"></span></label>
           <label>Nilai Kontrak (Rp)<input type="number" id="f_nilaiKontrak" min="0" step="1" required><span class="field-error" id="err_nilaiKontrak"></span></label>
           <label>Kebutuhan Modal Kerja (Rp)<input type="number" id="f_modalKerja" min="0" step="1" required><span class="field-error" id="err_modalKerja"></span></label>
-          <p class="section-note span-2" id="forecastHint" style="display:none;margin:-8px 0 0"></p>
           <label class="span-2">Jenis Pekerjaan<input type="text" id="f_jenisPekerjaan" list="jobOptions"><datalist id="jobOptions"></datalist></label>
           <label>Fee CB (Rp)<input type="number" id="f_feeCB" min="0" step="1"><span class="field-error" id="err_feeCB"></span></label>
         </div>
@@ -345,30 +274,6 @@
             <label>Biaya Personil/Tenaga Ahli<input type="number" id="f_biayaPersonil" min="0" step="1"></label>
             <label>Dokumen/Sertifikat<input type="number" id="f_biayaDokumen" min="0" step="1"></label>
             <label>Operasional<input type="number" id="f_biayaOperasional" min="0" step="1"></label>
-          </div>
-        </details>
-
-        <details class="detail-block">
-          <summary>Pajak Dibebankan Perusahaan (opsional)</summary>
-          <p class="section-note" style="margin-top:10px">Beberapa perusahaan klien memotong/menambahkan PPh &amp; PPN sendiri saat membayar ke Dacin. Beda-beda tiap proyek — isi manual sesuai bukti potong/invoice, kosongkan jika tidak ada.</p>
-          <div class="form-grid" style="margin-top:12px">
-            <label>PPh Dibebankan Perusahaan (Rp)<input type="number" id="f_pphPerusahaan" min="0" step="1"><span class="field-error" id="err_pphPerusahaan"></span></label>
-            <label>PPN Dibebankan Perusahaan (Rp)<input type="number" id="f_ppnPerusahaan" min="0" step="1"><span class="field-error" id="err_ppnPerusahaan"></span></label>
-          </div>
-        </details>
-
-        <details class="detail-block" id="penawaranBlock">
-          <summary>Surat Penawaran (opsional)</summary>
-          <p class="section-note" id="penawaranEmptyNote" style="margin-top:10px">Simpan proyek ini dulu (klik Simpan), lalu buka lagi untuk menambahkan link surat penawaran.</p>
-          <div id="penawaranManager" style="display:none;margin-top:10px">
-            <div id="penawaranCurrent" style="display:none;margin-bottom:12px;align-items:center;gap:8px">
-              <a id="penawaranDownloadLink" href="#" target="_blank" rel="noopener" class="btn">↗ <span id="penawaranFileName">—</span></a>
-              <button type="button" class="btn danger-text" id="penawaranDeleteBtn" style="margin-left:8px">Hapus Link</button>
-            </div>
-            <label>Link Google Drive Surat Penawaran<input type="url" id="penawaranUrlInput" placeholder="https://drive.google.com/..."></label>
-            <label>Keterangan singkat (opsional)<input type="text" id="penawaranLabelInput" placeholder="mis. Revisi 2 - 30 Agu 2026"></label>
-            <button type="button" class="btn" id="penawaranSaveBtn" style="margin-top:8px">Simpan Link</button>
-            <p class="field-error" id="penawaranError"></p>
           </div>
         </details>
 
@@ -392,8 +297,6 @@
             <div><span>Bagi Hasil 30%</span><b id="previewBagiHasil">—</b></div>
             <div><span>PPh Final 0,5%</span><b id="previewPPh">—</b></div>
             <div><span>Keuntungan Net</span><b id="previewNet">—</b></div>
-            <div><span>Pajak Perusahaan (PPh+PPN)</span><b id="previewPajakPerusahaan">—</b></div>
-            <div><span>Net Setelah Pajak Perusahaan</span><b id="previewNetFinal">—</b></div>
             <div><span>Status Kelayakan</span><b><span class="badge" id="previewHasil">—</span></b></div>
           </div>
         </div>
@@ -432,23 +335,53 @@
   </div>
 </div>
 
-
-<!-- ===== Panduan instal di iPhone/iPad (Safari tidak dukung install otomatis) ===== -->
-<div id="iosInstallOverlay" class="modal-overlay" style="display:none">
-  <div class="modal-box" style="max-width:380px">
-    <div class="modal-head"><h3>Instal ke Layar Utama</h3><button type="button" class="icon-btn" id="iosInstallCloseBtn">✕</button></div>
+<!-- ===== Modal: Pratinjau Impor Excel ===== -->
+<div id="importOverlay" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:900px">
+    <div class="modal-head">
+      <h3>Pratinjau Impor Excel</h3>
+      <button type="button" class="icon-btn" id="importCancelBtn">✕</button>
+    </div>
     <div class="modal-body">
-      <p class="section-note" style="margin-bottom:14px">Di iPhone/iPad, instal lewat menu Share bawaan Safari — bukan lewat tombol ini:</p>
-      <ol style="margin:0; padding-left:20px; font-size:13px; color:var(--ink-dim); line-height:2">
-        <li>Buka platform ini di <strong style="color:var(--ink)">Safari</strong> (bukan Chrome)</li>
-        <li>Ketuk ikon <strong style="color:var(--ink)">Share</strong> ⬆️ di bar bawah (atau atas)</li>
-        <li>Scroll, pilih <strong style="color:var(--ink)">"Add to Home Screen" / "Tambah ke Layar Utama"</strong></li>
-        <li>Ketuk <strong style="color:var(--ink)">"Add" / "Tambah"</strong> — ikon Dacin Mas muncul di layar utama seperti aplikasi biasa</li>
-      </ol>
+      <p class="section-note" id="importSummary"></p>
+      <div class="table-wrap" style="max-height:50vh; overflow-y:auto">
+        <table>
+          <thead><tr>
+            <th>Baris</th><th>Perusahaan</th><th>No PO</th><th>Nilai Kontrak</th><th>Status</th><th>Keterangan</th>
+          </tr></thead>
+          <tbody id="importPreviewBody"></tbody>
+        </table>
+      </div>
     </div>
     <div class="modal-foot">
       <div style="flex:1"></div>
-      <button type="button" class="btn btn-primary" id="iosInstallCloseBtn2">Mengerti</button>
+      <button type="button" class="btn" id="importCancelBtn2">Batal</button>
+      <button type="button" class="btn btn-primary" id="importConfirmBtn">Impor Baris Valid</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal: Bagikan Link Pemantau ===== -->
+<div id="shareOverlay" class="modal-overlay" style="display:none">
+  <div class="modal-box" style="max-width:560px">
+    <div class="modal-head">
+      <h3>Bagikan Link Pemantau</h3>
+      <button type="button" class="icon-btn" id="shareCloseBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="section-note">Orang yang membuka link ini bisa <strong>melihat</strong> seluruh dashboard (termasuk nilai kontrak, modal, keuntungan, dan bagi hasil investor) tetapi <strong>tidak bisa mengubah atau menghapus</strong> apa pun. Bagikan hanya ke pihak yang berkepentingan.</p>
+      <label class="share-label">Kata sandi akun pemantau
+        <input type="password" id="sharePassword" autocomplete="off" placeholder="Ketik kata sandi akun pemantau dari Firebase" spellcheck="false">
+      </label>
+      <p class="section-note" style="margin-top:6px">Kata sandi hanya dipakai untuk membentuk link di layar ini &mdash; tidak disimpan di mana pun.</p>
+      <label class="share-label">Link untuk dibagikan
+        <input type="text" id="shareLink" readonly placeholder="Link akan muncul di sini">
+      </label>
+    </div>
+    <div class="modal-foot">
+      <div style="flex:1"></div>
+      <button type="button" class="btn" id="shareWaBtn">Kirim via WhatsApp</button>
+      <button type="button" class="btn btn-primary" id="shareCopyBtn" disabled>Salin Link</button>
     </div>
   </div>
 </div>

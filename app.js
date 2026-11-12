@@ -40,31 +40,16 @@ let SETTINGS = { ...C.DEFAULT_SETTINGS };
 let COMPUTED = [];
 let CHARTS = {};
 let TABLE_SORT = { key: 'tanggalTransfer', dir: 'desc' };
-// Urutan prioritas status dana investor — dipakai untuk sort kolom "Status" di
-// tab Investor (angka lebih besar = lebih urgent/bermasalah).
-const STATUS_RANK = { critical: 6, overdue: 5, danger: 4, warn: 3, ok: 2, neutral: 1, info: 0 };
-let INVESTOR_SORT = { key: 'tanggalTransfer', dir: 'desc' };
 let EDITING_ID = null; // null = mode tambah baru
 let unsubProjects = null, unsubSettings = null;
-let FORECAST_DIRTY = new Set(); // field biaya yang sudah diubah manual - jangan ditimpa forecast
-let IS_VIEWER = false; // true = mode Investor/Stakeholder (lihat saja, tanpa login) - lihat wireInstall di bawah untuk deteksi ?viewer=1
 
-/** Blokir aksi tulis di sisi tampilan untuk mode Investor (lihat saja). Ini cuma
- *  lapisan kenyamanan UI - pengaman sesungguhnya ada di firestore.rules (koleksi admins/),
- *  supaya walau seseorang mengakali tampilan, Firestore tetap menolak tulisannya. */
-function blockIfViewer() {
-  if (!IS_VIEWER) return false;
-  toast('Mode Investor: lihat saja, tidak bisa mengedit.', 'error');
-  return true;
-}
-
-/** Sembunyikan tombol/aksi tulis untuk mode Investor. Sudah dibantu CSS (.viewer-mode),
- *  fungsi ini untuk elemen yang butuh disentuh lewat JS juga. */
-function applyViewerRestrictions() {
-  if (!IS_VIEWER) return;
-  const del = qs('#formDeleteBtn');
-  if (del) del.style.display = 'none';
-}
+/* ===== Mode Pemantau (hanya lihat) =====
+   Pemantau = akun Firebase khusus dengan email di bawah ini. Keamanan SEBENARNYA ada di
+   Firestore Rules (firestore.rules): akun ini hanya boleh MEMBACA. Kode di sini hanya
+   menyembunyikan tombol agar tampilan pemantau rapi. */
+const VIEWER_EMAIL = 'pemantau@dacinmas.app';
+let IS_VIEWER = false;
+let APP_WIRED = false;
 
 const KNOWN_INVESTORS = ['Vares', 'Kang Fajar', 'Kas Dacin', 'Gana'];
 const KNOWN_JOBS = ['Kalibrasi Timbangan', 'Kalibrasi Tangki', 'Kalibrasi Flowmeter', 'Kalibrasi Suhu', 'Kalibrasi Pressure', 'Kalibrasi Vacum Gauge', 'Check Weigher', 'Repair Timbangan', 'Pengadaan Barang', 'Training', 'Subkon', 'Kalibrasi Batching Plant', 'Kalibrasi Anak Timbangan'];
@@ -78,21 +63,29 @@ async function boot() {
   }
   wireLoginForm();
   wireInstall();
-
-  // Link ?viewer=1 = mode Investor/Stakeholder: masuk otomatis sebagai tamu (anonim),
-  // tanpa perlu email/password. Kalau provider Anonymous belum diaktifkan di Firebase
-  // Console, tampilkan pesan yang jelas alih-alih macet di layar kosong.
-  const isViewerLink = new URLSearchParams(location.search).get('viewer') === '1';
-  if (isViewerLink) {
-    try {
-      await DB.loginAnonymous();
-    } catch (err) {
-      showConfigError('Mode Investor (lihat saja) belum aktif. Admin Dacin Mas perlu mengaktifkan provider "Anonymous" di Firebase Console > Authentication > Sign-in method. (' + err.message + ')');
-      return;
+  let firstAuthEvent = true;
+  DB.watchAuth(async (user) => {
+    if (firstAuthEvent) {
+      firstAuthEvent = false;
+      // Link pemantau berbentuk  https://situs-anda.vercel.app/#k=KATASANDI
+      const key = readViewerKeyFromHash();
+      if (key) {
+        clearHash();
+        if (!user) {
+          try {
+            await DB.login(VIEWER_EMAIL, key);   // sukses -> event auth berikutnya memanggil showApp
+            return;
+          } catch (err) {
+            showLogin();
+            qs('#loginError').textContent = (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found')
+              ? 'Link pemantau tidak valid atau kata sandinya sudah diganti. Minta link baru ke admin.'
+              : (translateAuthError(err.code) || err.message);
+            return;
+          }
+        }
+        // Sudah login (mis. admin membuka link di browsernya sendiri): abaikan link, tetap pakai sesi yang ada.
+      }
     }
-  }
-
-  DB.watchAuth((user) => {
     if (user) {
       showApp(user);
     } else {
@@ -100,27 +93,7 @@ async function boot() {
     }
   });
   if ('serviceWorker' in navigator) {
-    // updateViaCache:'none' — paksa browser SELALU cek sw.js langsung ke jaringan
-    // (bypass HTTP cache) tiap kali halaman dimuat. Tanpa ini, browser bisa terus
-    // memakai byte sw.js lama dari cache biasa sehingga bump versi CACHE_NAME di
-    // dalam sw.js tidak pernah terdeteksi — inilah sumber "belum ada perubahan"
-    // yang berulang kali muncul walau file sudah ter-upload & Vercel sudah deploy.
-    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
-
-    // Bagian KEDUA dari fix ini: walau Service Worker baru terdeteksi & ter-install,
-    // ia baru benar-benar "mengambil alih" kontrol setelah event ini menyala - dan
-    // halaman yang SEDANG terbuka saat itu tetap dilayani oleh SW versi LAMA untuk
-    // semua file (app.js, style.css, dst) sampai di-reload ulang. Tanpa baris ini,
-    // pemuatan pertama setelah ada update bisa diam-diam memakai app.js versi lama
-    // (HTML-nya sudah baru, tapi skrip di dalamnya masih lama) - reload sekali otomatis
-    // di sini memastikan device selalu langsung dapat versi terbaru tanpa perlu
-    // trik manual (Incognito / hapus cache) tiap kali ada update baru.
-    let swReloaded = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (swReloaded) return;
-      swReloaded = true;
-      window.location.reload();
-    });
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
   window.addEventListener('online', updateOnlineBadge);
   window.addEventListener('offline', updateOnlineBadge);
@@ -147,6 +120,16 @@ function updateOnlineBadge() {
   }
 }
 
+function readViewerKeyFromHash() {
+  try {
+    const h = (location.hash || '').replace(/^#/, '');
+    return new URLSearchParams(h).get('k') || '';
+  } catch (e) { return ''; }
+}
+function clearHash() {
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { /* abaikan */ }
+}
+
 /* ===================== Auth screens ===================== */
 function showLogin() {
   if (unsubProjects) { unsubProjects(); unsubProjects = null; }
@@ -160,19 +143,26 @@ function showApp(user) {
   qs('#loginScreen').style.display = 'none';
   qs('#appRoot').style.display = 'block';
   qs('#configError').style.display = 'none';
-  IS_VIEWER = !!user.isAnonymous;
-  qs('#userEmail').textContent = IS_VIEWER ? 'Mode Investor — Lihat Saja' : (user.email || '');
-  qs('#appRoot').classList.toggle('viewer-mode', IS_VIEWER);
+  IS_VIEWER = (user.email || '').toLowerCase() === VIEWER_EMAIL;
+  document.body.classList.toggle('viewer', IS_VIEWER);
+  qs('#userEmail').textContent = IS_VIEWER ? 'MODE PEMANTAU · HANYA LIHAT' : (user.email || '');
+  if (IS_VIEWER) {
+    // Jika tab yang aktif adalah tab khusus admin, kembali ke Ringkasan
+    qsa('.tab').forEach((b) => b.classList.toggle('active', b.dataset.target === 'view-ringkasan'));
+    qsa('.view').forEach((v) => v.classList.toggle('active', v.id === 'view-ringkasan'));
+  }
 
+  if (!APP_WIRED) {
+  APP_WIRED = true;
   wireTabs();
   wireTableControls();
-  wireInvestorTableSort();
   wireForm();
   wireSeedBanner();
   wireLogout();
   wireSettingsForm();
-  wireBackupExport();
-  applyViewerRestrictions();
+  wireExcelButtons();
+  wireShareLink();
+  }
 
   unsubSettings = DB.watchSettings((s) => {
     SETTINGS = { ...C.DEFAULT_SETTINGS, ...(s || {}) };
@@ -225,7 +215,7 @@ function translateAuthError(code) {
 
 function wireLogout() {
   qs('#logoutBtn').addEventListener('click', async () => {
-    if (!confirm('Keluar dari aplikasi?')) return;
+    if (!confirm(IS_VIEWER ? 'Keluar? Untuk masuk lagi Anda perlu membuka link pemantau dari admin.' : 'Keluar dari aplikasi?')) return;
     await DB.logout();
   });
 }
@@ -238,11 +228,6 @@ function wireTabs() {
       qsa('.view').forEach((v) => v.classList.remove('active'));
       btn.classList.add('active');
       qs('#' + btn.dataset.target).classList.add('active');
-      // Chart.js mengukur ukuran canvas saat dibuat; kalau tab-nya sedang tersembunyi
-      // (display:none) waktu chart pertama kali dirender, ukurannya jadi 0 dan kosong
-      // selamanya. Resize paksa setelah tab aktif (browser sudah selesai reflow) supaya
-      // chart di tab Omset & Biaya ikut muncul begitu tab-nya dibuka.
-      requestAnimationFrame(() => Object.values(CHARTS).forEach((c) => c && c.resize()));
     });
   });
 }
@@ -253,12 +238,8 @@ function recomputeAndRenderAll() {
   const kpi = C.computeKPI(COMPUTED, SETTINGS);
   renderKPI(kpi);
   renderGauge(kpi);
-  const perMonth = C.groupByMonth(COMPUTED);
-  const perClient = C.groupByClient(COMPUTED);
-  renderMonthlyChart(perMonth);
-  renderClientChart(perClient);
-  renderMonthlyTable(perMonth);
-  renderClientTable(perClient);
+  renderMonthlyChart(C.groupByMonth(COMPUTED));
+  renderClientChart(C.groupByClient(COMPUTED));
   renderTargetProgress(kpi);
   renderInvestors(C.groupByInvestor(COMPUTED));
   renderComponentCost(C.computeAverageComponentCost(COMPUTED));
@@ -269,7 +250,6 @@ function recomputeAndRenderAll() {
 /* ===================== Seed import banner ===================== */
 function wireSeedBanner() {
   qs('#seedImportBtn').addEventListener('click', async () => {
-    if (blockIfViewer()) return;
     if (!confirm('Impor 30 data proyek awal dari file Excel? Hanya lakukan ini SEKALI saat data masih kosong.')) return;
     const btn = qs('#seedImportBtn');
     btn.disabled = true;
@@ -291,7 +271,7 @@ function wireSeedBanner() {
 }
 
 async function checkSeedBanner() {
-  if (RAW_PROJECTS.length === 0) {
+  if (!IS_VIEWER && RAW_PROJECTS.length === 0) {
     qs('#seedBanner').style.display = 'flex';
   } else {
     qs('#seedBanner').style.display = 'none';
@@ -420,51 +400,6 @@ function renderClientChart(perClient) {
   });
 }
 
-/** Tabulasi Omset per Bulan — pelengkap chart batang, angka pasti untuk laporan/keputusan. */
-function renderMonthlyTable(perMonth) {
-  const body = qs('#monthlyBody');
-  if (!body) return;
-  const rows = [...perMonth].reverse(); // terbaru di atas
-  body.innerHTML = rows.map((m) => `
-    <tr>
-      <td class="wrap">${m.bulan}</td>
-      <td>${fmtRp(m.omset)}</td>
-      <td>${fmtRp(m.modal)}</td>
-      <td>${fmtRp(m.labaKotor)}</td>
-      <td>${fmtPct(m.margin)}</td>
-      <td>${m.jumlahProyek}</td>
-    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
-}
-
-/**
- * Tabulasi Kontribusi Klien — plus catatan konsentrasi otomatis: kalau 1 klien menyumbang
- * porsi omset terlalu besar, itu risiko yang layak diketahui untuk keputusan (diversifikasi
- * klien, negosiasi kontrak, dsb), bukan cuma angka mentah.
- */
-function renderClientTable(perClient) {
-  const body = qs('#clientBody');
-  const note = qs('#clientConcentrationNote');
-  if (!body) return;
-  body.innerHTML = perClient.map((c) => `
-    <tr>
-      <td class="wrap">${esc(c.klien)}</td>
-      <td>${fmtRp(c.omset)}</td>
-      <td>${c.jumlahProyek}</td>
-      <td>${fmtPct(c.kontribusi)}</td>
-    </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
-
-  if (!note) return;
-  if (!perClient.length) { note.textContent = ''; return; }
-  const top = perClient[0];
-  if (top.kontribusi >= 0.4) {
-    note.innerHTML = `⚠ <b>${esc(top.klien)}</b> menyumbang ${fmtPct(top.kontribusi)} dari total omset — konsentrasi tinggi pada satu klien, pertimbangkan diversifikasi klien untuk mengurangi risiko.`;
-  } else if (perClient.length >= 3 && (perClient[0].kontribusi + perClient[1].kontribusi + perClient[2].kontribusi) >= 0.6) {
-    note.textContent = '3 klien teratas menyumbang lebih dari 60% omset — cukup terkonsentrasi, layak dipantau.';
-  } else {
-    note.textContent = 'Distribusi omset antar klien relatif tersebar, tidak bergantung pada satu klien dominan.';
-  }
-}
-
 /* ===================== Target progress ===================== */
 function renderTargetProgress(k) {
   const rows = [
@@ -508,90 +443,16 @@ function renderInvestors(list) {
       <div class="irow"><span>Jumlah Proyek</span><b>${inv.jumlahProyek}</b></div>
     </div>`).join('') || '<p class="section-note">Belum ada data.</p>';
 
-  populateInvestorFilterOptions();
-  const investorFilter = qs('#filterInvestorProgress').value;
-  const statusFilterLabels = {
-    ok: '🟢 Dana Baru Masuk', warn: '🟡 Dalam Pengerjaan', danger: '🔴 Perlu Percepatan',
-    overdue: '🟣 Sudah Jatuh Tempo', critical: '⚫ Bermasalah (>4 Bulan)', info: '🔵 Lunas', neutral: '⚪ Belum Ada Dana',
-  };
-  const statusFilter = qs('#filterStatusProgress').value;
-  let rows = COMPUTED.filter((p) => p.tanggalTransfer && (!investorFilter || p.investor === investorFilter)).map((p) => {
-    const status = C.computeProgressStatus(p);
-    const sudahTagih = !!(p.progress || {}).penagihan;
-    return { ...p, status, statusRank: STATUS_RANK[status.level] ?? 0, tagihanRank: sudahTagih ? 1 : 0 };
-  });
-  if (statusFilter) rows = rows.filter((p) => p.status.level === statusFilter);
-  const totalLabelParts = [investorFilter, statusFilter ? statusFilterLabels[statusFilter] : ''].filter(Boolean);
-  qs('#totalsRowLabel').textContent = totalLabelParts.length ? `TOTAL — ${totalLabelParts.join(' · ')}` : 'TOTAL KESELURUHAN';
-  rows.sort((a, b) => {
-    let va = a[INVESTOR_SORT.key], vb = b[INVESTOR_SORT.key];
-    if (INVESTOR_SORT.key === 'tanggalTransfer') { va = C.toDate(va)?.getTime() || 0; vb = C.toDate(vb)?.getTime() || 0; }
-    if (typeof va === 'string') va = va.toLowerCase();
-    if (typeof vb === 'string') vb = vb.toLowerCase();
-    if (va < vb) return INVESTOR_SORT.dir === 'asc' ? -1 : 1;
-    if (va > vb) return INVESTOR_SORT.dir === 'asc' ? 1 : -1;
-    return 0;
-  });
-  qs('#progressBody').innerHTML = rows.map((p) => {
-    const sudahTagih = !!(p.progress || {}).penagihan;
-    const isCritical = p.status.level === 'critical';
-    const rowClass = [p.feeCB > 0 ? 'row-cashback' : '', isCritical ? 'row-critical' : ''].filter(Boolean).join(' ');
-    const rowTitle = isCritical
-      ? `Bermasalah: belum lunas ${p.status.days} hari sejak dana masuk` + (p.feeCB > 0 ? ` | Fee CB: ${fmtRp(p.feeCB)}` : '')
-      : (p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : '');
-    return `
-    <tr class="${rowClass}" title="${rowTitle}">
-      <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}</td>
+  const rows = COMPUTED.filter((p) => p.tanggalTransfer).map((p) => ({ ...p, status: C.computeProgressStatus(p) }));
+  rows.sort((a, b) => C.toDate(b.tanggalTransfer) - C.toDate(a.tanggalTransfer));
+  qs('#progressBody').innerHTML = rows.map((p) => `
+    <tr>
+      <td class="wrap">${esc(p.perusahaan)}</td>
       <td class="wrap">${esc(p.investor)}</td>
       <td>${fmtDate(p.tanggalTransfer)}</td>
-      <td>${fmtRp(p.modalKerja)}</td>
-      <td>${fmtRp(p.nilaiKontrak)}</td>
-      <td>${fmtRp(p.keuntunganBersih)}</td>
-      <td>${fmtRp(p.bagiHasil30)}</td>
       <td>${fmtRp(p.totalPengembalian)}</td>
-      <td><span class="badge ${p.status.level}">${p.status.dot} ${p.status.label}</span></td>
-      <td><span class="badge ${sudahTagih ? 'ok' : 'danger'}">${sudahTagih ? '🟢 Sudah Ditagih' : '🔴 Belum Tertagih'}</span></td>
-      <td class="wrap">${esc(p.keterangan) || '—'}</td>
-      <td class="wrap">${esc(p.kendala) || '—'}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="12" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
-
-  // Baris TOTAL KESELURUHAN di footer tabel — meniru baris total di file Excel.
-  qs('#totalModalKerja').textContent = fmtRp(rows.reduce((a, p) => a + (p.modalKerja || 0), 0));
-  qs('#totalNilaiKontrak').textContent = fmtRp(rows.reduce((a, p) => a + (p.nilaiKontrak || 0), 0));
-  qs('#totalKeuntunganBersih').textContent = fmtRp(rows.reduce((a, p) => a + (p.keuntunganBersih || 0), 0));
-  qs('#totalBagiHasil').textContent = fmtRp(rows.reduce((a, p) => a + (p.bagiHasil30 || 0), 0));
-  qs('#totalKembaliInvestor').textContent = fmtRp(rows.reduce((a, p) => a + (p.totalPengembalian || 0), 0));
-
-  // Baris ringkasan jumlah proyek per status — meniru baris "X proyek baru masuk,
-  // Y dalam pengerjaan, ..." di file Excel, mengikuti tingkatan status yang sama
-  // dengan yang dipakai untuk sort kolom Status.
-  const STATUS_SUMMARY_LABELS = [
-    ['ok', '🟢 Dana Baru Masuk'], ['warn', '🟡 Dalam Pengerjaan'], ['danger', '🔴 Perlu Percepatan'],
-    ['overdue', '🟣 Sudah Jatuh Tempo'], ['critical', '⚫ Bermasalah (>4 Bulan)'],
-    ['info', '🔵 Lunas'], ['neutral', '⚪ Belum Ada Dana'],
-  ];
-  const statusCounts = { ok: 0, warn: 0, danger: 0, overdue: 0, critical: 0, info: 0, neutral: 0 };
-  rows.forEach((p) => { if (statusCounts[p.status.level] !== undefined) statusCounts[p.status.level] += 1; });
-  qs('#statusSummaryRow').innerHTML = STATUS_SUMMARY_LABELS
-    .map(([level, label]) => `<span class="status-count-item">${label}: <b>${statusCounts[level]}</b></span>`)
-    .join('');
-
-  const belumTertagih = rows.filter((p) => !(p.progress || {}).penagihan);
-  const totalBelumTertagih = belumTertagih.reduce((a, p) => a + (p.nilaiKontrak || 0), 0);
-  qs('#belumTertagihCount').textContent = belumTertagih.length;
-  qs('#belumTertagihTotal').textContent = fmtRp(totalBelumTertagih);
-
-  const bermasalah = C.computeBermasalahByClient(rows);
-  qs('#bermasalahCount').textContent = bermasalah.reduce((a, e) => a + e.jumlahProyek, 0);
-  qs('#bermasalahTotal').textContent = fmtRp(bermasalah.reduce((a, e) => a + e.totalNilaiKontrak, 0));
-  qs('#bermasalahList').innerHTML = bermasalah.length
-    ? bermasalah.map((e) => `
-      <div class="bermasalah-row">
-        <span class="b-name">⚫ ${esc(e.perusahaan)}</span>
-        <span class="b-meta">${e.jumlahProyek} proyek · ${fmtRp(e.totalNilaiKontrak)} · maks ${e.maxHari} hari belum lunas</span>
-      </div>`).join('')
-    : '<p class="section-note">Tidak ada perusahaan dengan pembayaran macet &gt;4 bulan saat ini.</p>';
+      <td><span class="badge ${p.status.level === 'ok' ? 'ok' : p.status.level === 'danger' ? 'danger' : 'warn'}">${p.status.label}</span></td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--ink-faint);padding:20px">Belum ada data.</td></tr>';
 }
 
 /* ===================== Component cost ===================== */
@@ -641,18 +502,6 @@ function populateFilterOptions() {
   sel.value = current || '';
 }
 
-/* Dropdown filter investor khusus tabel Progres Dana di tab Investor - terpisah
-   dari #filterInvestor milik tab Proyek supaya filter di satu tab tidak
-   memengaruhi tab lainnya. Baris TOTAL KESELURUHAN & rekap status di footer
-   tabel otomatis menyesuaikan pilihan filter ini. */
-function populateInvestorFilterOptions() {
-  const sel = qs('#filterInvestorProgress');
-  const current = sel.value;
-  const investors = Array.from(new Set(RAW_PROJECTS.map((p) => p.investor).filter(Boolean))).sort();
-  sel.innerHTML = '<option value="">Semua Investor</option>' + investors.map((i) => `<option value="${esc(i)}">${esc(i)}</option>`).join('');
-  sel.value = current || '';
-}
-
 function applyTableFilters() {
   const q = qs('#searchInput').value.trim().toLowerCase();
   const inv = qs('#filterInvestor').value;
@@ -673,32 +522,20 @@ function applyTableFilters() {
     return 0;
   });
   qs('#tableCount').textContent = rows.length + ' proyek';
-  qs('#projectsBody').innerHTML = rows.map((p) => {
-    const status = C.computeProgressStatus(p);
-    const isCritical = status.level === 'critical';
-    const rowClass = [p.feeCB > 0 ? 'row-cashback' : '', isCritical ? 'row-critical' : ''].filter(Boolean).join(' ');
-    const rowTitle = isCritical
-      ? `Bermasalah: belum lunas ${status.days} hari sejak dana masuk` + (p.feeCB > 0 ? ` | Fee CB: ${fmtRp(p.feeCB)}` : '')
-      : (p.feeCB > 0 ? 'Fee CB (cashback): ' + fmtRp(p.feeCB) : '');
-    return `
-    <tr class="${rowClass}" title="${rowTitle}">
+  qs('#projectsBody').innerHTML = rows.map((p) => `
+    <tr>
       <td>${fmtDate(p.tanggalTransfer)}</td>
-      <td class="wrap">${esc(p.perusahaan)}${p.feeCB > 0 ? ' <span class="badge cashback">💰</span>' : ''}${isCritical ? ' <span class="badge critical">⚫ &gt;4 Bulan</span>' : ''}</td>
+      <td class="wrap">${esc(p.perusahaan)}</td>
       <td class="wrap">${esc(p.jenisPekerjaan)}</td>
       <td>${fmtRp(p.nilaiKontrak)}</td>
       <td>${fmtRp(p.modalKerja)}</td>
       <td>${fmtRp(p.keuntunganNet)}</td>
-      <td title="PPh: ${fmtRp(p.pphPerusahaan)} | PPN: ${fmtRp(p.ppnPerusahaan)}">${p.pajakPerusahaan ? fmtRp(p.pajakPerusahaan) : '—'}</td>
       <td class="wrap">${esc(p.investor)}</td>
-      <td>${p.penawaranFile && p.penawaranFile.url
-        ? `<a href="${esc(p.penawaranFile.url)}" target="_blank" rel="noopener" class="icon-btn" title="Buka ${esc(p.penawaranFile.label || 'Surat Penawaran')}">🔗</a>`
-        : '<span style="color:var(--ink-faint)">—</span>'}</td>
-      <td class="row-actions">
+      <td class="row-actions admin-only">
         <button class="icon-btn" data-edit="${p.id}" title="Ubah">✎</button>
         <button class="icon-btn danger" data-del="${p.id}" title="Hapus">🗑</button>
       </td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--ink-faint);padding:24px">Tidak ada proyek yang cocok.</td></tr>';
 
   qsa('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openForm(btn.dataset.edit)));
   qsa('[data-del]').forEach((btn) => btn.addEventListener('click', () => handleDelete(btn.dataset.del)));
@@ -720,23 +557,8 @@ function wireTableControls() {
   qs('#addProjectBtn').addEventListener('click', () => openForm(null));
 }
 
-function wireInvestorTableSort() {
-  qsa('#view-investor thead th[data-isort]').forEach((th) => {
-    th.addEventListener('click', () => {
-      const key = th.dataset.isort;
-      if (INVESTOR_SORT.key === key) INVESTOR_SORT.dir = INVESTOR_SORT.dir === 'asc' ? 'desc' : 'asc';
-      else { INVESTOR_SORT.key = key; INVESTOR_SORT.dir = 'desc'; }
-      qsa('#view-investor thead th[data-isort] .arrow').forEach((a) => (a.textContent = ''));
-      qs('.arrow', th).textContent = INVESTOR_SORT.dir === 'asc' ? '↑' : '↓';
-      renderInvestors(C.groupByInvestor(COMPUTED));
-    });
-  });
-  qs('#filterInvestorProgress').addEventListener('change', () => renderInvestors(C.groupByInvestor(COMPUTED)));
-  qs('#filterStatusProgress').addEventListener('change', () => renderInvestors(C.groupByInvestor(COMPUTED)));
-}
-
 async function handleDelete(id) {
-  if (blockIfViewer()) return;
+  if (IS_VIEWER) return;
   const p = RAW_PROJECTS.find((x) => x.id === id);
   const name = p ? p.perusahaan + ' (' + p.noPO + ')' : id;
   if (!confirm('Hapus proyek "' + name + '"? Tindakan ini tidak bisa dibatalkan.')) return;
@@ -745,6 +567,167 @@ async function handleDelete(id) {
     toast('Proyek dihapus.', 'success');
   } catch (err) {
     toast('Gagal menghapus: ' + err.message, 'error');
+  }
+}
+
+/* ===================== Export & Import Excel (cadangan / input massal) ===================== */
+const EXCEL_COLUMNS = [
+  ['Tanggal PO', 'tanggalPO'], ['No PO', 'noPO'], ['Perusahaan', 'perusahaan'],
+  ['Tanggal Transfer', 'tanggalTransfer'], ['Nilai Kontrak', 'nilaiKontrak'], ['Modal Kerja', 'modalKerja'],
+  ['Investor', 'investor'], ['Jenis Pekerjaan', 'jenisPekerjaan'], ['Fee CB', 'feeCB'],
+  ['Biaya Personil', 'biayaPersonil'], ['Biaya Dokumen', 'biayaDokumen'], ['Biaya Operasional', 'biayaOperasional'],
+  ['Keterangan', 'keterangan'], ['Kendala', 'kendala'],
+];
+
+function wireExcelButtons() {
+  qs('#exportExcelBtn').addEventListener('click', exportToExcel);
+  qs('#importExcelBtn').addEventListener('click', () => {
+    if (typeof XLSX === 'undefined') {
+      toast('Pustaka pembaca Excel belum siap. Coba muat ulang halaman (refresh).', 'error');
+      return;
+    }
+    qs('#excelImportInput').click();
+  });
+  qs('#excelImportInput').addEventListener('change', handleExcelFileSelected);
+  qs('#importCancelBtn').addEventListener('click', closeImportModal);
+  qs('#importCancelBtn2').addEventListener('click', closeImportModal);
+  qs('#importOverlay').addEventListener('click', (e) => { if (e.target.id === 'importOverlay') closeImportModal(); });
+  qs('#importConfirmBtn').addEventListener('click', commitImport);
+}
+
+function exportToExcel() {
+  if (typeof XLSX === 'undefined') {
+    toast('Pustaka Excel belum siap. Coba muat ulang halaman (refresh).', 'error');
+    return;
+  }
+  const header = EXCEL_COLUMNS.map((c) => c[0]);
+  const rows = RAW_PROJECTS.map((p) => EXCEL_COLUMNS.map(([, key]) => {
+    if (key === 'tanggalPO' || key === 'tanggalTransfer') return toInputDate(p[key]);
+    return p[key] ?? '';
+  }));
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws['!cols'] = header.map(() => ({ wch: 18 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Proyek');
+  const today = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(wb, `Backup_Dacin_Mas_${today}.xlsx`);
+  toast('Backup Excel diunduh (' + RAW_PROJECTS.length + ' proyek).', 'success');
+}
+
+let IMPORT_STAGED = { toAdd: [], toUpdate: [] };
+
+function handleExcelFileSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
+      const sheetName = wb.SheetNames.includes('Proyek') ? 'Proyek' : wb.SheetNames[0];
+      const ws = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      processImportRows(rows);
+    } catch (err) {
+      console.error('[import]', err);
+      toast('Gagal membaca file: ' + err.message, 'error');
+    }
+    e.target.value = '';
+  };
+  reader.onerror = () => toast('Gagal membaca file dari komputer Anda.', 'error');
+  reader.readAsArrayBuffer(file);
+}
+
+function processImportRows(rows) {
+  const headerMap = {};
+  EXCEL_COLUMNS.forEach(([label, key]) => { headerMap[label] = key; });
+
+  const staged = [];
+  rows.forEach((raw, i) => {
+    const p = {};
+    Object.entries(raw).forEach(([col, val]) => {
+      const key = headerMap[col.trim()];
+      if (key) p[key] = val;
+    });
+    // lewati baris kosong total
+    if (!p.perusahaan && !p.noPO && !p.nilaiKontrak) return;
+
+    const { valid, errors, warnings } = C.validateProject(p);
+    const existing = p.noPO ? RAW_PROJECTS.find((x) => x.noPO === String(p.noPO).trim()) : null;
+    staged.push({
+      rowNum: i + 2, // +2: baris 1 = header, index mulai 0
+      data: p,
+      valid,
+      errors,
+      warnings,
+      mode: existing ? 'update' : 'new',
+      existingId: existing ? existing.id : null,
+    });
+  });
+
+  if (staged.length === 0) {
+    toast('Tidak ada baris data yang terbaca dari file ini.', 'error');
+    return;
+  }
+
+  IMPORT_STAGED = {
+    toAdd: staged.filter((s) => s.valid && s.mode === 'new').map((s) => s.data),
+    toUpdate: staged.filter((s) => s.valid && s.mode === 'update').map((s) => ({ id: s.existingId, data: s.data })),
+  };
+
+  renderImportPreview(staged);
+  qs('#importOverlay').style.display = 'flex';
+}
+
+function renderImportPreview(staged) {
+  const validCount = staged.filter((s) => s.valid).length;
+  const errorCount = staged.length - validCount;
+  const updateCount = staged.filter((s) => s.valid && s.mode === 'update').length;
+  const newCount = validCount - updateCount;
+  qs('#importSummary').textContent =
+    `${staged.length} baris terbaca — ${newCount} akan ditambahkan sebagai proyek baru, ${updateCount} akan memperbarui proyek yang sudah ada (No PO cocok), ${errorCount} baris error (dilewati).`;
+
+  qs('#importPreviewBody').innerHTML = staged.map((s) => {
+    const statusBadgeHtml = !s.valid
+      ? '<span class="badge warn">ERROR</span>'
+      : s.mode === 'update' ? '<span class="badge">PERBARUI</span>' : '<span class="badge ok">BARU</span>';
+    const note = !s.valid
+      ? Object.values(s.errors).join(' ')
+      : (Object.keys(s.warnings || {}).length ? '⚠ ' + Object.values(s.warnings).join(' ') : (s.mode === 'update' ? 'Cocok dengan proyek "' + (RAW_PROJECTS.find(x=>x.id===s.existingId)?.perusahaan||'') + '"' : '—'));
+    return `<tr>
+      <td>${s.rowNum}</td>
+      <td class="wrap">${esc(s.data.perusahaan || '-')}</td>
+      <td>${esc(s.data.noPO || '-')}</td>
+      <td>${fmtRp(C.toNumber(s.data.nilaiKontrak))}</td>
+      <td>${statusBadgeHtml}</td>
+      <td class="wrap" style="color:var(--ink-faint);font-size:11.5px">${esc(note)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function closeImportModal() {
+  qs('#importOverlay').style.display = 'none';
+  IMPORT_STAGED = { toAdd: [], toUpdate: [] };
+}
+
+async function commitImport() {
+  const { toAdd, toUpdate } = IMPORT_STAGED;
+  if (toAdd.length === 0 && toUpdate.length === 0) {
+    toast('Tidak ada baris valid untuk diimpor.', 'error');
+    return;
+  }
+  const btn = qs('#importConfirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'Mengimpor…';
+  try {
+    await DB.bulkApplyProjects(toAdd, toUpdate);
+    toast(`Impor selesai: ${toAdd.length} proyek baru, ${toUpdate.length} diperbarui.`, 'success');
+    closeImportModal();
+  } catch (err) {
+    console.error('[import:commit]', err);
+    toast('Gagal menyimpan hasil impor: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Impor Baris Valid';
   }
 }
 
@@ -757,52 +740,18 @@ function wireForm() {
 
   qs('#formCancelBtn').addEventListener('click', closeForm);
   qs('#formOverlay').addEventListener('click', (e) => { if (e.target.id === 'formOverlay') closeForm(); });
-  wirePenawaranLink();
 
   const form = qs('#projectForm');
-  const forecastFieldIds = ['f_modalKerja', 'f_biayaPersonil', 'f_biayaDokumen', 'f_biayaOperasional'];
-  form.addEventListener('input', (e) => {
-    if (forecastFieldIds.includes(e.target.id)) FORECAST_DIRTY.add(e.target.id);
-    if (e.target.id === 'f_nilaiKontrak') applyForecast();
-    updateLivePreview();
-  });
+  form.addEventListener('input', updateLivePreview);
   form.addEventListener('submit', handleFormSubmit);
 }
 
-/**
- * Isi otomatis Kebutuhan Modal Kerja + rincian Personil/Dokumen/Operasional begitu Nilai
- * Kontrak diisi pada proyek BARU, berdasarkan rata-rata historis (compute.js -
- * forecastComponentCost). Field yang sudah diubah manual oleh pengguna (FORECAST_DIRTY)
- * tidak akan ditimpa lagi.
- */
-function applyForecast() {
-  const hint = qs('#forecastHint');
-  if (EDITING_ID) { hint.style.display = 'none'; return; } // jangan timpa data proyek yang sudah ada
-  const nilaiKontrak = C.toNumber(qs('#f_nilaiKontrak').value);
-  if (!(nilaiKontrak > 0)) { hint.style.display = 'none'; return; }
-
-  const f = C.forecastComponentCost(nilaiKontrak, COMPUTED);
-  if (!f.available) { hint.style.display = 'none'; return; }
-
-  if (!FORECAST_DIRTY.has('f_biayaPersonil')) qs('#f_biayaPersonil').value = Math.round(f.personil);
-  if (!FORECAST_DIRTY.has('f_biayaDokumen')) qs('#f_biayaDokumen').value = Math.round(f.dokumen);
-  if (!FORECAST_DIRTY.has('f_biayaOperasional')) qs('#f_biayaOperasional').value = Math.round(f.operasional);
-  if (!FORECAST_DIRTY.has('f_modalKerja')) qs('#f_modalKerja').value = Math.round(f.modalKerja);
-
-  hint.style.display = 'block';
-  hint.textContent = '🔮 Estimasi otomatis dari rata-rata ' + f.sampleSize + ' proyek historis ' +
-    '(Personil ' + f.avgPersonil.toFixed(1) + '%, Dokumen ' + f.avgDokumen.toFixed(1) + '%, ' +
-    'Operasional ' + f.avgOperasional.toFixed(1) + '% dari Nilai Kontrak) — silakan sesuaikan manual bila perlu.';
-}
-
 function openForm(id) {
-  if (blockIfViewer()) return;
+  if (IS_VIEWER) return; // pemantau tidak boleh mengubah data
   EDITING_ID = id;
   const form = qs('#projectForm');
   form.reset();
   qsa('.field-error', form).forEach((el) => (el.textContent = ''));
-  FORECAST_DIRTY = new Set();
-  qs('#forecastHint').style.display = 'none';
 
   if (id) {
     const p = RAW_PROJECTS.find((x) => x.id === id);
@@ -817,8 +766,6 @@ function openForm(id) {
     qs('#f_investor').value = p.investor || '';
     qs('#f_jenisPekerjaan').value = p.jenisPekerjaan || '';
     qs('#f_feeCB').value = p.feeCB || 0;
-    qs('#f_pphPerusahaan').value = p.pphPerusahaan || 0;
-    qs('#f_ppnPerusahaan').value = p.ppnPerusahaan || 0;
     qs('#f_biayaPersonil').value = p.biayaPersonil || '';
     qs('#f_biayaDokumen').value = p.biayaDokumen || '';
     qs('#f_biayaOperasional').value = p.biayaOperasional || '';
@@ -830,76 +777,16 @@ function openForm(id) {
     qs('#f_p_penagihan').checked = !!pr.penagihan;
     qs('#f_p_bayar').checked = !!pr.pembayaran;
     qs('#formDeleteBtn').style.display = 'inline-flex';
-    renderPenawaranSection(p);
   } else {
     qs('#formTitle').textContent = 'Tambah Proyek Baru';
     qs('#f_feeCB').value = 0;
-    qs('#f_pphPerusahaan').value = 0;
-    qs('#f_ppnPerusahaan').value = 0;
     qs('#formDeleteBtn').style.display = 'none';
-    qs('#penawaranEmptyNote').style.display = 'block';
-    qs('#penawaranManager').style.display = 'none';
   }
   qs('#formDeleteBtn').onclick = () => { if (id) { closeForm(); handleDelete(id); } };
 
   updateLivePreview();
   qs('#formOverlay').style.display = 'flex';
   qs('#f_perusahaan').focus();
-}
-
-/** Tampilkan status link surat penawaran (ada/tidak) untuk proyek yang sedang diedit. */
-function renderPenawaranSection(p) {
-  qs('#penawaranEmptyNote').style.display = 'none';
-  qs('#penawaranManager').style.display = 'block';
-  qs('#penawaranError').textContent = '';
-  qs('#penawaranUrlInput').value = '';
-  qs('#penawaranLabelInput').value = '';
-  const cur = qs('#penawaranCurrent');
-  if (p.penawaranFile && p.penawaranFile.url) {
-    cur.style.display = 'flex';
-    qs('#penawaranDownloadLink').href = p.penawaranFile.url;
-    qs('#penawaranFileName').textContent = p.penawaranFile.label || 'Buka Surat Penawaran';
-  } else {
-    cur.style.display = 'none';
-  }
-}
-
-/** Surat penawaran disimpan sebagai LINK (mis. Google Drive), bukan file upload —
- *  Cloud Storage Firebase untuk project ini butuh paket Blaze (berbayar) yang belum
- *  diaktifkan, jadi pendekatan link ini tidak butuh upgrade apapun. */
-function wirePenawaranLink() {
-  qs('#penawaranSaveBtn').addEventListener('click', async () => {
-    if (!EDITING_ID) return;
-    const errEl = qs('#penawaranError');
-    errEl.textContent = '';
-    const url = qs('#penawaranUrlInput').value.trim();
-    const label = qs('#penawaranLabelInput').value.trim();
-    if (!url) { errEl.textContent = 'Isi link Google Drive-nya dulu.'; return; }
-    if (!/^https?:\/\//i.test(url)) { errEl.textContent = 'Link harus diawali http:// atau https://'; return; }
-    try {
-      const meta = await DB.savePenawaranLink(EDITING_ID, url, label);
-      qs('#penawaranCurrent').style.display = 'flex';
-      qs('#penawaranDownloadLink').href = meta.url;
-      qs('#penawaranFileName').textContent = meta.label || 'Buka Surat Penawaran';
-      qs('#penawaranUrlInput').value = '';
-      qs('#penawaranLabelInput').value = '';
-      toast('Link surat penawaran disimpan.', 'success');
-    } catch (err) {
-      errEl.textContent = 'Gagal menyimpan: ' + err.message;
-    }
-  });
-
-  qs('#penawaranDeleteBtn').addEventListener('click', async () => {
-    if (!EDITING_ID) return;
-    if (!confirm('Hapus link surat penawaran ini?')) return;
-    try {
-      await DB.removePenawaranLink(EDITING_ID);
-      qs('#penawaranCurrent').style.display = 'none';
-      toast('Link surat penawaran dihapus.', 'success');
-    } catch (err) {
-      toast('Gagal menghapus: ' + err.message, 'error');
-    }
-  });
 }
 
 function closeForm() {
@@ -918,8 +805,6 @@ function readFormValues() {
     investor: qs('#f_investor').value,
     jenisPekerjaan: qs('#f_jenisPekerjaan').value,
     feeCB: qs('#f_feeCB').value || 0,
-    pphPerusahaan: qs('#f_pphPerusahaan').value || 0,
-    ppnPerusahaan: qs('#f_ppnPerusahaan').value || 0,
     biayaPersonil: qs('#f_biayaPersonil').value || 0,
     biayaDokumen: qs('#f_biayaDokumen').value || 0,
     biayaOperasional: qs('#f_biayaOperasional').value || 0,
@@ -942,18 +827,21 @@ function updateLivePreview() {
   qs('#previewBagiHasil').textContent = fmtRp(computed.bagiHasil30);
   qs('#previewPPh').textContent = fmtRp(computed.pphFinal);
   qs('#previewNet').textContent = fmtRp(computed.keuntunganNet);
-  qs('#previewPajakPerusahaan').textContent = fmtRp(computed.pajakPerusahaan);
-  qs('#previewNetFinal').textContent = fmtRp(computed.keuntunganNetSetelahPajakPerusahaan);
   const hasilEl = qs('#previewHasil');
   hasilEl.textContent = computed.hasilKelayakan;
   hasilEl.className = computed.hasilKelayakan === 'Layak' ? 'badge ok' : 'badge warn';
 
-  const { errors } = C.validateProject(values);
+  const { errors, warnings } = C.validateProject(values);
   qsa('.field-error', qs('#projectForm')).forEach((el) => (el.textContent = ''));
   Object.entries(errors).forEach(([field, msg]) => {
     const el = qs('#err_' + field);
     if (el) el.textContent = msg;
   });
+  Object.entries(warnings).forEach(([field, msg]) => {
+    const el = qs('#err_' + field);
+    if (el && !el.textContent) { el.textContent = '⚠ ' + msg; el.style.color = 'var(--warn)'; }
+  });
+  qsa('.field-error', qs('#projectForm')).forEach((el) => { if (!Object.keys(warnings).some(k => el.id === 'err_' + k)) el.style.color = ''; });
 
   const dupEl = qs('#dupWarning');
   const noPO = values.noPO.trim();
@@ -967,7 +855,6 @@ function updateLivePreview() {
 
 async function handleFormSubmit(e) {
   e.preventDefault();
-  if (blockIfViewer()) return;
   const values = readFormValues();
   const { valid, errors } = C.validateProject(values);
   if (!valid) {
@@ -1010,7 +897,6 @@ function wireSettingsForm() {
   qs('#settingsOverlay').addEventListener('click', (e) => { if (e.target.id === 'settingsOverlay') qs('#settingsOverlay').style.display = 'none'; });
   qs('#settingsForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (blockIfViewer()) return;
     const newSettings = {
       targetT1: Number(qs('#s_targetT1').value) || C.DEFAULT_SETTINGS.targetT1,
       targetT2: Number(qs('#s_targetT2').value) || C.DEFAULT_SETTINGS.targetT2,
@@ -1041,143 +927,10 @@ function populateSettingsForm() {
   qs('#s_layakMinMargin').value = (SETTINGS.layakMinMargin * 100).toFixed(2);
 }
 
-/* ===================== Backup Excel ===================== */
-/** Ekspor seluruh data yang sedang termuat (proyek + hasil hitung + rekap) ke satu file
- *  .xlsx multi-sheet — jaga-jaga kalau platform bermasalah (crash/bug), jaringan mati,
- *  atau listrik padam. Berjalan dari data yang sudah ada di memori (COMPUTED), jadi tetap
- *  bisa dipakai selama halaman sudah pernah dimuat sebelumnya, walau sedang offline. */
-function wireBackupExport() {
-  const btn = qs('#backupBtn');
-  if (!btn) return;
-  btn.addEventListener('click', () => {
-    if (typeof XLSX === 'undefined') {
-      toast('Modul Excel belum termuat (perlu koneksi internet minimal sekali). Coba lagi.', 'error');
-      return;
-    }
-    try {
-      exportBackupToExcel();
-      toast('Backup Excel berhasil diunduh.', 'success');
-    } catch (err) {
-      toast('Gagal membuat file backup: ' + err.message, 'error');
-    }
-  });
-}
-
-function exportBackupToExcel() {
-  const wb = XLSX.utils.book_new();
-
-  const proyekRows = COMPUTED.map((p) => ({
-    'Tgl PO': fmtDate(p.tanggalPO),
-    'No PO': p.noPO || '',
-    'Perusahaan': p.perusahaan || '',
-    'Jenis Pekerjaan': p.jenisPekerjaan || '',
-    'Investor': p.investor || '',
-    'Tgl Transfer': fmtDate(p.tanggalTransfer),
-    'Nilai Kontrak': p.nilaiKontrak || 0,
-    'Modal Kerja': p.modalKerja || 0,
-    'Keuntungan Bersih': p.keuntunganBersih || 0,
-    'Bagi Hasil 30%': p.bagiHasil30 || 0,
-    'Total Kembali ke Investor': p.totalPengembalian || 0,
-    'PPh Final (Dacin)': p.pphFinal || 0,
-    'Fee CB': p.feeCB || 0,
-    'Keuntungan Net': p.keuntunganNet || 0,
-    'PPh Dibebankan Perusahaan': p.pphPerusahaan || 0,
-    'PPN Dibebankan Perusahaan': p.ppnPerusahaan || 0,
-    'Net Setelah Pajak Perusahaan': p.keuntunganNetSetelahPajakPerusahaan || 0,
-    'Margin': p.margin ? (p.margin * 100).toFixed(1) + '%' : '0%',
-    'Status Kelayakan': p.hasilKelayakan || '',
-    'Pengerjaan': p.progress?.pengerjaan ? 'Ya' : 'Belum',
-    'Submit Dokumen': p.progress?.submitDokumen ? 'Ya' : 'Belum',
-    'Penagihan': p.progress?.penagihan ? 'Sudah Ditagih' : 'Belum Tertagih',
-    'Pembayaran (Lunas)': p.progress?.pembayaran ? 'Lunas' : 'Belum',
-    'Status Progres Dana': p.tanggalTransfer ? C.computeProgressStatus(p).label : '',
-    'Keterangan': p.keterangan || '',
-    'Kendala': p.kendala || '',
-    'Link Surat Penawaran': (p.penawaranFile && p.penawaranFile.url) || '',
-  }));
-  const wsProyek = XLSX.utils.json_to_sheet(proyekRows);
-  XLSX.utils.book_append_sheet(wb, wsProyek, 'Proyek');
-
-  const investorRows = C.groupByInvestor(COMPUTED).map((inv) => ({
-    'Investor': inv.investor,
-    'Omset': inv.omset,
-    'Modal Kerja': inv.modalKerja,
-    'Bagi Hasil 30%': inv.bagiHasil,
-    'Jumlah Proyek': inv.jumlahProyek,
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(investorRows), 'Investor');
-
-  const belumTertagih = COMPUTED.filter((p) => p.tanggalTransfer && !(p.progress || {}).penagihan);
-  const progresRows = COMPUTED.filter((p) => p.tanggalTransfer).map((p) => ({
-    'Perusahaan': p.perusahaan || '',
-    'Investor': p.investor || '',
-    'Tgl Transfer': fmtDate(p.tanggalTransfer),
-    'Modal Kerja': p.modalKerja || 0,
-    'Nilai Kontrak': p.nilaiKontrak || 0,
-    'Keuntungan Bersih': p.keuntunganBersih || 0,
-    'Bagi Hasil 30%': p.bagiHasil30 || 0,
-    'Total Kembali ke Investor': p.totalPengembalian || 0,
-    'Status': C.computeProgressStatus(p).label,
-    'Status Tagihan': (p.progress || {}).penagihan ? 'Sudah Ditagih' : 'Belum Tertagih',
-    'Keterangan': p.keterangan || '',
-    'Kendala': p.kendala || '',
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(progresRows), 'Progres Dana');
-
-  const ringkasanTagihan = [{
-    'Jumlah Proyek Belum Tertagih': belumTertagih.length,
-    'Akumulasi Nilai Belum Tertagih': belumTertagih.reduce((a, p) => a + (p.nilaiKontrak || 0), 0),
-  }];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ringkasanTagihan), 'Ringkasan Tagihan');
-
-  const monthlyRows = C.groupByMonth(COMPUTED).map((m) => ({
-    'Bulan': m.bulan,
-    'Omset': m.omset,
-    'Modal Kerja': m.modal,
-    'Laba Kotor': m.labaKotor,
-    'Margin': (m.margin * 100).toFixed(1) + '%',
-    'Jumlah Proyek': m.jumlahProyek,
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(monthlyRows), 'Omset Bulanan');
-
-  const clientRows = C.groupByClient(COMPUTED).map((c) => ({
-    'Klien': c.klien,
-    'Omset': c.omset,
-    'Jumlah Proyek': c.jumlahProyek,
-    'Kontribusi': (c.kontribusi * 100).toFixed(1) + '%',
-  }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(clientRows), 'Omset per Klien');
-
-  const today = new Date();
-  const stamp = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
-  XLSX.writeFile(wb, `Dacin-Mas-Backup-${stamp}.xlsx`);
-}
-
-/* ===================== Install prompt (Android/desktop + iOS) ===================== */
+/* ===================== Install prompt ===================== */
 function wireInstall() {
   const btn = qs('#installBtn');
   let deferredPrompt = null;
-
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
-
-  if (isStandalone) return; // sudah terinstal, tidak perlu tombol apapun
-
-  if (isIOS) {
-    // Safari iOS tidak pernah mengirim 'beforeinstallprompt' — satu-satunya cara
-    // instal adalah manual lewat menu Share bawaan Safari. Tombol Instal di sini
-    // tidak memicu instal langsung, cuma membuka panduan langkah-langkahnya.
-    btn.style.display = 'inline-flex';
-    const overlay = qs('#iosInstallOverlay');
-    const openHint = () => { overlay.style.display = 'flex'; };
-    const closeHint = () => { overlay.style.display = 'none'; };
-    btn.addEventListener('click', openHint);
-    qs('#iosInstallCloseBtn').addEventListener('click', closeHint);
-    qs('#iosInstallCloseBtn2').addEventListener('click', closeHint);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeHint(); });
-    return;
-  }
-
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; btn.style.display = 'inline-flex'; });
   btn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
@@ -1187,4 +940,44 @@ function wireInstall() {
     btn.style.display = 'none';
   });
   window.addEventListener('appinstalled', () => { btn.style.display = 'none'; });
+}
+
+
+/* ===================== Bagikan Link Pemantau (khusus admin) ===================== */
+function buildViewerLink(password) {
+  return location.origin + location.pathname + '#k=' + encodeURIComponent(password);
+}
+
+function wireShareLink() {
+  const openBtn = qs('#shareBtn');
+  if (!openBtn) return;
+  const overlay = qs('#shareOverlay');
+  const pwInput = qs('#sharePassword');
+  const linkBox = qs('#shareLink');
+  const refresh = () => {
+    const pw = pwInput.value.trim();
+    linkBox.value = pw ? buildViewerLink(pw) : '';
+    qs('#shareCopyBtn').disabled = !pw;
+    qs('#shareWaBtn').classList.toggle('disabled', !pw);
+  };
+  const close = () => { overlay.style.display = 'none'; pwInput.value = ''; linkBox.value = ''; };
+  openBtn.addEventListener('click', () => { overlay.style.display = 'flex'; refresh(); pwInput.focus(); });
+  qs('#shareCloseBtn').addEventListener('click', close);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  pwInput.addEventListener('input', refresh);
+  qs('#shareCopyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(linkBox.value);
+      toast('Link pemantau disalin.', 'success');
+    } catch (e) {
+      linkBox.select();
+      toast('Tekan Ctrl+C (atau tahan lama di HP) untuk menyalin.', 'info');
+    }
+  });
+  qs('#shareWaBtn').addEventListener('click', (e) => {
+    const pw = pwInput.value.trim();
+    if (!pw) { e.preventDefault(); return; }
+    const msg = 'Link pemantau proyek CV Dacin Mas (hanya lihat, jangan disebarkan):\n' + buildViewerLink(pw);
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+  });
 }
